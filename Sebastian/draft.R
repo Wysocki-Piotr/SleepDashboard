@@ -3,6 +3,7 @@ SebastianRaw <- read.csv2("data/sleepdataSebastian.csv")
 PiotrRaw <- read.csv2("data/sleepdata.xls.csv")
 
 library(dplyr)
+library(lubridate)
 
 parse_percentage <- function(str) {
   as.numeric(substr(str, 1, nchar(str)-1))/100
@@ -58,7 +59,7 @@ library(ggplot2)
 library(tidyr)
 
 # Można zmieniać imię osoby na do wykresu
-Olek |>
+Piotr |>
   select(Time.in.bed..seconds., Time.asleep..seconds., day) |>
   pivot_longer(
     cols = c(Time.in.bed..seconds.,
@@ -68,5 +69,14 @@ Olek |>
   ) |>
   # View()
   ggplot(aes(x = day, y = val, colour = stat)) +
-  geom_line() +
-  ylim(0, NA)
+  # geom_line() +
+  geom_area(aes(fill = stat), alpha = 0.2) +
+  ylim(0, NA) +
+  scale_color_manual(labels = c("Time asleep in seconds", "Time in bed in seconds"),
+                     values = c("blue", "red")) +
+  scale_fill_manual(labels = c("Time asleep in seconds", "Time in bed in seconds"),
+                     values = c("blue", "red")) +
+  labs(
+    y = "time",
+    title = "Piotr"
+  )
