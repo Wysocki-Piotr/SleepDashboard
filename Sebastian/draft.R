@@ -18,13 +18,14 @@ process_raw <- function(dt) {
       # Went.to.bed = time_format(Went.to.bed),
       Went.to.bed = ymd_hms(gsub("\\.", "/", Went.to.bed)),
       Woke.up = ymd_hms(gsub("\\.", "/", Woke.up)),
-      day = as.Date(Woke.up),
+      day = as_date(Woke.up),
       # Woke.up = ymd_hms(Woke.up),
       Coughing..per.hour. = as.numeric(Coughing..per.hour.),
       Movements.per.hour = as.numeric(Movements.per.hour),
       # Wake.up.window.start = if_else(Wake.up.window.start == "",true = NA, false = time_format(Wake.up.window.start)),
       # Wake.up.window.stop = if_else(Wake.up.window.stop == "", true = NA, false = time_format(Wake.up.window.stop)),
     ) |>
+    filter(day %within% (ymd("2024-12-01") %--% now())) |>
     select(-c(
       City,
       Alertness.score,
@@ -61,12 +62,14 @@ library(tidyr)
 # Można zmieniać imię osoby na do wykresu
 Piotr |>
   select(Time.in.bed..seconds., Time.asleep..seconds., day) |>
+  mutate(Time.not.sleeping = Time.in.bed..seconds. - Time.asleep..seconds.) |>
   pivot_longer(
-    cols = c(Time.in.bed..seconds.,
-             Time.asleep..seconds.),
+    cols = c( Time.asleep..seconds.,
+             Time.not.sleeping),
     names_to =  "stat",
     values_to = "val"
   ) |>
+  arrange(desc(stat)) |>
   # View()
   ggplot(aes(x = day, y = val, colour = stat)) +
   # geom_line() +
@@ -80,3 +83,22 @@ Piotr |>
     y = "time",
     title = "Piotr"
   )
+
+
+Sebastian |>
+  mutate(woke_up_inter = interval(day, Woke.up),
+         went_to_bed_inter = interval(day, Went.to.bed),
+         fell_asleep_time = Went.to.bed + dseconds(Asleep.after..seconds.)) |>
+  mutate(fell_asleep_inter = interval(day, fell_asleep_time))|>
+  # View()
+  ggplot(aes(x = day, y = fell_asleep_inter)) +
+  # geom_errorbar()
+  geom_crossbar(aes(ymin = went_to_bed_inter, ymax = fell_asleep_inter), fill = "#887711") +
+  geom_crossbar(aes(ymax = woke_up_inter, ymin = fell_asleep_inter), fill = "#223388") +
+  # scale_y_continuous(labels = (\(x) paste(x %/% 3600, (x %% 3600) %/% 60, sep = ":")))
+  scale_y_continuous(labels = (\(x) format(make_datetime(sec = x), "%H:%M"))) +
+  labs(
+    y = "hour"
+  )
+
+                     
