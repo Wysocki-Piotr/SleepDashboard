@@ -92,10 +92,8 @@ Sebastian |>
   mutate(fell_asleep_inter = interval(day, fell_asleep_time))|>
   # View()
   ggplot(aes(x = day, y = fell_asleep_inter)) +
-  # geom_errorbar()
-  geom_crossbar(aes(ymin = went_to_bed_inter, ymax = fell_asleep_inter), fill = "#887711") +
-  geom_crossbar(aes(ymax = woke_up_inter, ymin = fell_asleep_inter), fill = "#223388") +
-  # scale_y_continuous(labels = (\(x) paste(x %/% 3600, (x %% 3600) %/% 60, sep = ":")))
+  geom_crossbar(aes(ymin = went_to_bed_inter, ymax = fell_asleep_inter), fill = "#887711", colour = NA) +
+  geom_crossbar(aes(ymax = woke_up_inter, ymin = fell_asleep_inter), fill = "#223388", colour = NA) +
   scale_y_continuous(labels = (\(x) format(make_datetime(sec = x), "%H:%M"))) +
   labs(
     y = "hour"
