@@ -14,9 +14,9 @@ library(ggplot2)
 library(tidyr)
 
 
-OlekRaw <- read.csv2("../data/sleepdataOlek.csv")
-SebastianRaw <- read.csv2("../data/sleepdataSebastian.csv")
-PiotrRaw <- read.csv2("../data/sleepdata.xls.csv")
+SebastianRaw <- read.csv2("C:/Users/Admin/Downloads/sleepdataSebastian.csv")
+PiotrRaw <- read.csv2("C:/Users/Admin/Downloads/sleepdataPiotr (1).csv")
+OlekRaw <- read.csv("C:/Users/Admin/Downloads/sleepdataOlek.csv")
 
 
 parse_percentage <- function(str) {
@@ -31,9 +31,11 @@ process_raw <- function(dt) {
       Did.snore = Did.snore == "true",
       Went.to.bed = ymd_hms(Went.to.bed),
       Woke.up = ymd_hms(Woke.up),
-      day = as.Date(Woke.up),
+      day = ymd_hms(Went.to.bed),
       Coughing..per.hour. = as.numeric(Coughing..per.hour.),
       Movements.per.hour = as.numeric(Movements.per.hour),
+      General.day.asleep = ifelse(hour(ymd_hms(Went.to.bed)) < 15, day(day)-1,day(day)),
+      General.month.asleep = ifelse(hour(ymd_hms(Went.to.bed))< 15 & day(day) == 1, 12, month(day)) 
     ) |>
     filter(day %within% (ymd("2024-12-01") %--% now())) |>
     select(-c(
@@ -43,6 +45,8 @@ process_raw <- function(dt) {
       Alertness.accuracy
     ))
 }
+
+
 
 # Sebastian <- SebastianRaw |>
 #   mutate(
@@ -70,43 +74,43 @@ Data <- bind_rows(Sebastian, Piotr, Olek)
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
-
-    # Application title
-    titlePanel("Old Faithful Geyser Data"),
-
-    # Sidebar with a slider input for number of bins 
-    sidebarLayout(
-        sidebarPanel(
-          selectInput("selectSleeper",
-                      "Select a sleeper(person)",
-                      1:3)
-        ),
-
-        # Show a plot of the generated distribution
-        mainPanel(
-          plotOutput("sleeptimeCrossbar")
-        )
+  
+  # Application title
+  titlePanel("Old Faithful Geyser Data"),
+  
+  # Sidebar with a slider input for number of bins 
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("selectSleeper",
+                  "Select a sleeper(person)",
+                  1:3)
+    ),
+    
+    # Show a plot of the generated distribution
+    mainPanel(
+      plotOutput("sleeptimeCrossbar")
     )
+  )
 )
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
-      output$sleeptimeCrossbar <- renderPlot({
-        Data |>
-          filter(sleeper == input$selectSleeper) |>
-          mutate(woke_up_inter = interval(day, Woke.up),
-                 went_to_bed_inter = interval(day, Went.to.bed),
-                 fell_asleep_time = Went.to.bed + dseconds(Asleep.after..seconds.)) |>
-          mutate(fell_asleep_inter = interval(day, fell_asleep_time))|>
-          # View()
-          ggplot(aes(x = day, y = fell_asleep_inter)) +
-          geom_crossbar(aes(ymin = went_to_bed_inter, ymax = fell_asleep_inter), fill = "#887711", colour = NA) +
-          geom_crossbar(aes(ymax = woke_up_inter, ymin = fell_asleep_inter), fill = "#223388", colour = NA) +
-          scale_y_continuous(labels = (\(x) format(make_datetime(sec = x), "%H:%M"))) +
-          labs(
-            y = "hour"
-          )
-      })
+  output$sleeptimeCrossbar <- renderPlot({
+    Data |>
+      filter(sleeper == input$selectSleeper) |>
+      mutate(woke_up_inter = interval(day, Woke.up),
+             went_to_bed_inter = interval(day, Went.to.bed),
+             fell_asleep_time = Went.to.bed + dseconds(Asleep.after..seconds.)) |>
+      mutate(fell_asleep_inter = interval(day, fell_asleep_time))|>
+      # View()
+      ggplot(aes(x = day, y = fell_asleep_inter)) +
+      geom_crossbar(aes(ymin = went_to_bed_inter, ymax = fell_asleep_inter), fill = "#887711", colour = NA) +
+      geom_crossbar(aes(ymax = woke_up_inter, ymin = fell_asleep_inter), fill = "#223388", colour = NA) +
+      scale_y_continuous(labels = (\(x) format(make_datetime(sec = x), "%H:%M"))) +
+      labs(
+        y = "hour"
+      )
+  })
 }
 
 # Run the application 
