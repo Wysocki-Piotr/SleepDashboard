@@ -12,6 +12,7 @@ library(dplyr)
 library(lubridate)
 library(ggplot2)
 library(tidyr)
+library(plotly)
 
 
 SebastianRaw <- read.csv2("C:/Users/Admin/Downloads/sleepdataSebastian.csv")
@@ -35,7 +36,8 @@ process_raw <- function(dt) {
       Coughing..per.hour. = as.numeric(Coughing..per.hour.),
       Movements.per.hour = as.numeric(Movements.per.hour),
       General.day.asleep = ifelse(hour(ymd_hms(Went.to.bed)) < 15, day(day)-1,day(day)),
-      General.month.asleep = ifelse(hour(ymd_hms(Went.to.bed))< 15 & day(day) == 1, 12, month(day)) 
+      General.month.asleep = ifelse(hour(ymd_hms(Went.to.bed))< 15 & day(day) == 1, 12, month(day)),
+      General.day.asleep = ifelse(General.day.asleep == 0, 31, General.day.asleep)
     ) |>
     filter(day %within% (ymd("2024-12-01") %--% now())) |>
     select(-c(
@@ -46,6 +48,32 @@ process_raw <- function(dt) {
     ))
 }
 
+generate_pom <- function(df){
+  df %>%
+    mutate(day = update(ymd_hms(day, tz = "UTC"), day = General.day.asleep),
+           day = update(day, month = General.month.asleep),
+           day = if_else(month(day) == 12,
+                         update(day, year = 2024), 
+                         update(day, year = 2025))) %>%
+    mutate(DayOfWeek = wday(ymd_hms(day, tz = "UTC"),
+                            label = TRUE, week_start = 1),
+           WeekNumber = week(ymd_hms(day, tz = "UTC"))) %>%
+    mutate(WeekNumber = if_else(WeekNumber == 1, 54, WeekNumber)) %>%
+    arrange(WeekNumber)
+}
+
+plot <- function(df){
+  ggplot(df, aes(x = DayOfWeek,
+                 y = WeekNumber,
+                 fill = Sleep.Quality)) +
+    geom_tile(color = "white", lwd = 1.5) +
+    scale_fill_gradientn(colors = hcl.colors(50, "RdYlGn"), limits = c(0.25, 1)) +
+    theme_minimal() +
+    theme(
+      panel.grid = element_blank()
+    ) + labs(x = "Dzień tygodnia", y = "Numer tygodnia w roku") +
+    scale_y_continuous(labels = function(x) ifelse(x >= 54, x - 53, x))
+}
 
 
 # Sebastian <- SebastianRaw |>
@@ -70,8 +98,6 @@ Olek <- process_raw(OlekRaw) |> mutate(sleeper = 3)
 
 Data <- bind_rows(Sebastian, Piotr, Olek)
 
-
-
 # Define UI for application that draws a histogram
 ui <- fluidPage(
   
@@ -88,8 +114,14 @@ ui <- fluidPage(
     
     # Show a plot of the generated distribution
     mainPanel(
-      plotOutput("sleeptimeCrossbar")
+      plotOutput("sleeptimeCrossbar"),
+      plotlyOutput("sleepDistractionScatter"),
+      plotOutput("acitivityBoxplot"),
+      plotOutput("heatmap1"),
+      plotOutput("heatmap2"),
+      plotOutput("heatmap3")
     )
+    
   )
 )
 
@@ -110,6 +142,40 @@ server <- function(input, output) {
       labs(
         y = "hour"
       )
+  })
+  output$sleepDistractionScatter <- renderPlotly({
+    dane <- Data %>% filter(sleeper == input$selectSleeper)
+    plot_ly(dane, x = ~Movements.per.hour, y = ~Sleep.Quality,
+            text = ~paste("Kaszlnięcia na godzinę: ", Coughing..per.hour.,
+                          "<br> Czas chrapania: ", Snore.time..seconds.),
+            hoverinfo = "text",
+            type = "scatter",
+            mode = "markers")
+  })
+  output$activityBoxplot <- renderPlot({
+    Piotr <- Piotr %>% 
+      mutate(activity = c(FALSE, FALSE, TRUE, FALSE,
+                          FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE,
+                          FALSE, TRUE, FALSE, TRUE, FALSE, FALSE, TRUE,
+                          FALSE, TRUE, FALSE))
+    ggplot(Piotr, aes(x = activity, y = Sleep.Quality)) +
+      geom_boxplot() + 
+      theme_minimal()
+  })
+  output$heatmap1 <- renderPlot({
+    pom1 <- generate_pom(Sebastian)
+    p <- plot(pom1)
+    p
+  })
+  output$heatmap2 <- renderPlot({
+    pom2 <- generate_pom(Piotr)
+    p <- plot(pom2)
+    p
+  })
+  output$heatmap3 <- renderPlot({
+    pom3 <- generate_pom(Olek)
+    p <- plot(pom3)
+    p
   })
 }
 
