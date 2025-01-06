@@ -15,9 +15,9 @@ library(tidyr)
 library(plotly)
 
 
-SebastianRaw <- read.csv2("C:/Users/Admin/Downloads/sleepdataSebastian.csv")
-PiotrRaw <- read.csv2("C:/Users/Admin/Downloads/sleepdataPiotr (1).csv")
-OlekRaw <- read.csv("C:/Users/Admin/Downloads/sleepdataOlek.csv")
+SebastianRaw <- read.csv2("../data/sleepdataSebastian.csv")
+PiotrRaw <- read.csv2("../data/sleepdataPiotr.csv")
+OlekRaw <- read.csv("../data/sleepdataOlek.csv")
 
 
 parse_percentage <- function(str) {
