@@ -13,7 +13,6 @@ library(lubridate)
 library(ggplot2)
 library(tidyr)
 library(plotly)
-library(ggridges)
 
 
 SebastianRaw <- read.csv2("../data/sleepdataSebastian.csv")
@@ -117,7 +116,7 @@ ui <- fluidPage(
     mainPanel(
       plotOutput("sleeptimeCrossbar"),
       plotlyOutput("sleepDistractionScatter"),
-      plotOutput("acitivityRidge"),
+      plotOutput("acitivityBoxplot"),
       plotOutput("heatmap1"),
       plotOutput("heatmap2"),
       plotOutput("heatmap3")
@@ -153,16 +152,21 @@ server <- function(input, output) {
             type = "scatter",
             mode = "markers")
   })
-  output$activityRidge <- renderPlot({
+  output$activityBoxplot <- renderPlot({
     Piotr <- Piotr %>% 
       mutate(activity = c(FALSE, FALSE, TRUE, FALSE,
                           FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE,
                           FALSE, TRUE, FALSE, TRUE, FALSE, FALSE, TRUE,
                           FALSE, TRUE, FALSE))
-    ggplot(Piotr, aes(x = Sleep.Quality, y = activity, fill = activity)) +
-      geom_density_ridges(scale = 3, rel_min_height = 0.01,alpha = 0.6) +
-      theme_ridges() + 
-      theme(legend.position = "none")
+    Olek <- Olek %>% 
+      mutate(activity = c(TRUE, FALSE, FALSE, FALSE,
+                          FALSE, FALSE, FALSE, TRUE, TRUE, FALSE, TRUE,
+                          FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE,
+                          TRUE))
+    
+    ggplot(Piotr, aes(x = activity, y = Sleep.Quality)) +
+      geom_boxplot() + 
+      theme_minimal()
   })
   output$heatmap1 <- renderPlot({
     pom1 <- generate_pom(Sebastian)
