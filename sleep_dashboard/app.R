@@ -13,6 +13,7 @@ library(lubridate)
 library(ggplot2)
 library(tidyr)
 library(plotly)
+library(ggridges)
 
 
 SebastianRaw <- read.csv2("../data/sleepdataSebastian.csv")
@@ -32,7 +33,7 @@ process_raw <- function(dt) {
       Did.snore = Did.snore == "true",
       Went.to.bed = ymd_hms(Went.to.bed),
       Woke.up = ymd_hms(Woke.up),
-      day = ymd_hms(Went.to.bed),
+      day = as_date(Woke.up),
       Coughing..per.hour. = as.numeric(Coughing..per.hour.),
       Movements.per.hour = as.numeric(Movements.per.hour),
       General.day.asleep = ifelse(hour(ymd_hms(Went.to.bed)) < 15, day(day)-1,day(day)),
@@ -115,6 +116,7 @@ ui <- fluidPage(
     # Show a plot of the generated distribution
     mainPanel(
       plotOutput("sleeptimeCrossbar"),
+      plotOutput("sleep_hour_dist_ridgelines"),
       plotlyOutput("sleepDistractionScatter"),
       plotOutput("acitivityBoxplot"),
       plotOutput("heatmap1"),
@@ -140,7 +142,7 @@ server <- function(input, output) {
       geom_crossbar(aes(ymax = woke_up_inter, ymin = fell_asleep_inter), fill = "#223388", colour = NA) +
       scale_y_continuous(labels = (\(x) format(make_datetime(sec = x), "%H:%M"))) +
       labs(
-        y = "hour"
+        y = "time of day"
       )
   })
   output$sleepDistractionScatter <- renderPlotly({
@@ -182,6 +184,30 @@ server <- function(input, output) {
     pom3 <- generate_pom(Olek)
     p <- plot(pom3)
     p
+  })
+  
+  output$sleep_hour_dist_ridgelines <- renderPlot({
+    minutes <- Data |>
+      mutate(minute_went_to_bed = unclass(interval(day, Went.to.bed)) %/% 60) |>
+      mutate(minute_woke_up = unclass(interval(day, Woke.up)) %/% 60)
+    
+    samples <- min(minutes$minute_went_to_bed):max(minutes$minute_woke_up)
+    
+    minutes |>
+      cross_join(tibble(val = samples)) |>
+      filter(minute_went_to_bed <= val & val <= minute_woke_up) |>
+      ggplot(aes(x = val, y = sleeper, fill = factor(sleeper))) +
+      stat_density_ridges(alpha = 0.6) +
+      scale_x_continuous(labels = (\(x) format(make_datetime(min = x), "%H:%M"))) +
+      labs(
+        x = "time of day",
+        y = NULL,
+        fill = "sleeper"
+      ) +
+      theme_ridges() +
+      theme(
+        axis.text.y = element_blank()
+      )
   })
 }
 

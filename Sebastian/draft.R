@@ -1,6 +1,6 @@
-OlekRaw <- read.csv2("data/sleepdataOlek.csv")
-SebastianRaw <- read.csv2("data/sleepdataSebastian.csv")
-PiotrRaw <- read.csv2("data/sleepdata.xls.csv")
+OlekRaw <- read.csv("../data/sleepdataOlek.csv")
+SebastianRaw <- read.csv2("../data/sleepdataSebastian.csv")
+PiotrRaw <- read.csv2("../data/sleepdata.xls.csv")
 
 library(dplyr)
 library(lubridate)
@@ -16,8 +16,8 @@ process_raw <- function(dt) {
       Regularity = parse_percentage(Regularity),
       Did.snore = Did.snore == "true",
       # Went.to.bed = time_format(Went.to.bed),
-      Went.to.bed = ymd_hms(gsub("\\.", "/", Went.to.bed)),
-      Woke.up = ymd_hms(gsub("\\.", "/", Woke.up)),
+      Went.to.bed = ymd_hms(Went.to.bed),
+      Woke.up = ymd_hms(Woke.up),
       day = as_date(Woke.up),
       # Woke.up = ymd_hms(Woke.up),
       Coughing..per.hour. = as.numeric(Coughing..per.hour.),
@@ -96,7 +96,36 @@ Sebastian |>
   geom_crossbar(aes(ymax = woke_up_inter, ymin = fell_asleep_inter), fill = "#223388", colour = NA) +
   scale_y_continuous(labels = (\(x) format(make_datetime(sec = x), "%H:%M"))) +
   labs(
-    y = "hour"
+    y = "time of day"
   )
 
-                     
+minutes <- Data |>
+  mutate(minute_went_to_bed = unclass(interval(day, Went.to.bed)) %/% 60) |>
+  mutate(minute_woke_up = unclass(interval(day, Woke.up)) %/% 60)
+
+samples <- min(minutes$minute_went_to_bed):max(minutes$minute_woke_up)
+
+library(ggridges)
+
+minutes |>
+  cross_join(tibble(val = samples)) |>
+  filter(minute_went_to_bed <= val & val <= minute_woke_up) |>
+  # mutate(sleeper = factor(sleeper)) |>
+  # group_by(val) |>
+  # summarise(days_asleep = sum(was_asleep)) |>
+  # View()
+  ggplot(aes(x = val, y = sleeper, fill = factor(sleeper))) +
+  stat_density_ridges(alpha = 0.6) +
+  scale_x_continuous(labels = (\(x) format(make_datetime(min = x), "%H:%M"))) +
+  labs(
+    x = "time of day",
+    y = NULL,
+    fill = "sleeper"
+  ) +
+  theme_ridges() +
+  theme(
+    axis.text.y = element_blank()
+  )
+  # geom_density(alpha = 0.3) +
+  # xlim(min(minutes$minute_went_to_bed), max(minutes$minute_woke_up))
+  # xlim(-100, 1000)
