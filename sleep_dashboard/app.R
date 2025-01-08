@@ -51,17 +51,18 @@ process_raw <- function(dt) {
 
 generate_pom <- function(df){
   df %>%
-    mutate(day = update(ymd_hms(day, tz = "UTC"), day = General.day.asleep),
-           day = update(day, month = General.month.asleep),
-           day = if_else(month(day) == 12,
-                         update(day, year = 2024), 
-                         update(day, year = 2025))) %>%
-    mutate(DayOfWeek = wday(ymd_hms(day, tz = "UTC"),
+    mutate(Went.to.bed = update(ymd_hms(Went.to.bed, tz = "UTC"), day = General.day.asleep),
+           Went.to.bed = update(Went.to.bed, month = General.month.asleep),
+           Went.to.bed = if_else(month(Went.to.bed) == 12,
+                                 update(Went.to.bed, year = 2024), 
+                                 update(Went.to.bed, year = 2025))) %>%
+    mutate(DayOfWeek = wday(ymd_hms(Went.to.bed, tz = "UTC"),
                             label = TRUE, week_start = 1),
-           WeekNumber = week(ymd_hms(day, tz = "UTC"))) %>%
+           WeekNumber = week(ymd_hms(Went.to.bed, tz = "UTC"))) %>%
     mutate(WeekNumber = if_else(WeekNumber == 1, 54, WeekNumber)) %>%
     arrange(WeekNumber)
 }
+
 
 plot <- function(df){
   ggplot(df, aes(x = DayOfWeek,
@@ -213,3 +214,5 @@ server <- function(input, output) {
 
 # Run the application 
 shinyApp(ui = ui, server = server)
+
+
