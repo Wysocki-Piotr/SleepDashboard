@@ -1,11 +1,3 @@
-#
-# This is a Shiny web application. You can run the application by clicking
-# the 'Run App' button above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    https://shiny.posit.co/
-#
 
 library(shiny)
 library(dplyr)
@@ -14,8 +6,11 @@ library(ggplot2)
 library(tidyr)
 library(plotly)
 library(ggridges)
+library(bslib)
+library(fmsb)
 library(patchwork)
 library(ggalt)
+
 
 SebastianRaw <- read.csv2("../data/sleepdataSebastian.csv")
 PiotrRaw <- read.csv2("../data/sleepdataPiotr.csv")
@@ -64,7 +59,6 @@ generate_pom <- function(df){
     arrange(WeekNumber)
 }
 
-
 plot <- function(df){
   ggplot(df, aes(x = DayOfWeek,
                  y = WeekNumber,
@@ -95,42 +89,130 @@ plot <- function(df){
 #     Alertness.accuracy
 #   ))
 
-Sebastian <- process_raw(SebastianRaw) |> mutate(sleeper = 1)
-Piotr <- process_raw(PiotrRaw) |> mutate(sleeper = 2)
-Olek <- process_raw(OlekRaw) |> mutate(sleeper = 3)
+Sebastian <- process_raw(SebastianRaw) |> mutate(sleeper = "Sebastian")
+Piotr <- process_raw(PiotrRaw) |> mutate(sleeper = "Piotr")
+Olek <- process_raw(OlekRaw) |> mutate(sleeper = "Olek")
 
 Data <- bind_rows(Sebastian, Piotr, Olek)
 
 # Define UI for application that draws a histogram
-ui <- fluidPage(
+ui1 <- fluidPage(
+  titlePanel("Ogólne dane"),
+  mainPanel(
+    plotOutput("radar_plot"),
+    plotOutput("sleep_hour_dist_ridgelines"),
+    plotOutput("density_plot")
+  )
+)
+
+
+
+ui2 <- fluidPage(
   
   # Application title
-  titlePanel("Old Faithful Geyser Data"),
+  titlePanel("Indywidualne dane"),
   
   # Sidebar with a slider input for number of bins 
   sidebarLayout(
     sidebarPanel(
       selectInput("selectSleeper",
                   "Select a sleeper(person)",
-                  1:3)
+                  unique(Data$sleeper),
+                  selected = "Sebastian")
     ),
     
     # Show a plot of the generated distribution
     mainPanel(
       plotOutput("sleeptimeCrossbar", height = "500px"),
-      plotOutput("sleep_hour_dist_ridgelines"),
       plotlyOutput("sleepDistractionScatter"),
       plotOutput("acitivityBoxplot"),
-      plotOutput("heatmap1"),
-      plotOutput("heatmap2"),
-      plotOutput("heatmap3")
+      plotOutput("heatmap")
     )
     
   )
 )
 
+ui3 <- fluidPage(
+  titlePanel("Kumulatywna ilość snu"),
+  sidebarLayout(
+    sidebarPanel(
+      sliderInput("day", "Wybierz dzień:", 
+                  min = min(Data$day), 
+                  max = max(Data$day), 
+                  value = min(Data$day), 
+                  step = 1, 
+                  animate = animationOptions(interval = 500, loop = FALSE))
+    ),
+    mainPanel(
+      plotOutput("bar_plot")
+    )
+  )
+)
+
+
 # Define server logic required to draw a histogram
 server <- function(input, output) {
+  
+  ########## ui1 - ogólne informacje ##########
+  
+  output$radar_plot <- renderPlot({
+    filtered_data <- Data %>% 
+      select(Sleep.Quality, Asleep.after..seconds., Regularity, Snore.time..seconds.,
+             Coughing..per.hour.,Movements.per.hour,sleeper)
+    
+    min_vals <- apply(filtered_data[, -7], 2, min)
+    max_vals <- apply(filtered_data[, -7], 2, max)
+    data_norm <- as.data.frame(scale(filtered_data[, -7], center = min_vals, scale = max_vals - min_vals))
+    data_norm$sleeper <- filtered_data$sleeper
+    
+    data_olek <- colMeans(data_norm[data_norm$sleeper == "Olek", -ncol(data_norm)])
+    data_seba <- colMeans(data_norm[data_norm$sleeper == "Sebastian", -ncol(data_norm)])
+    data_piotr <- colMeans(data_norm[data_norm$sleeper == "Piotr", -ncol(data_norm)])
+    
+    data_radar <- as.data.frame(rbind(
+      rep(1, ncol(data_norm) - 1),  
+      rep(0, ncol(data_norm) - 1),  
+      data_olek,  
+      data_seba,
+      data_piotr
+    ))
+    
+    radarchart(data_radar,
+               axistype = 1, 
+               pcol = c("blue", "red", "green"),  
+               pfcol = c("#0000FF50", "#FF000050", "lightgreen"),  
+               plwd = 2,  
+               cglcol = "grey",  
+               cglty = 1, 
+               axislabcol = "black",  
+               vlcex = 0.8  
+    )
+    legend("topright", legend = c("Olek", "Seba", "Piotr"), col = c("blue", "red", "green"), lty = 1, lwd = 2)
+    
+    
+  })
+  
+  
+  output$density_plot <- renderPlot({
+    mean_df <- Data %>% 
+      group_by(sleeper) %>% 
+      summarise(mean_SQ = mean(Sleep.Quality))
+    
+    density_plot <- ggplot(Data, aes(x = Sleep.Quality, fill = sleeper)) + 
+      geom_density(alpha = 0.3) +
+      geom_vline(data = mean_df, aes(xintercept = mean_SQ, color = sleeper),
+                 linetype = "dashed") + 
+      theme_minimal()
+    density_plot
+  })
+  
+  
+  
+  
+  
+  
+  ########## ui2 - indywidualne informacje ##########
+  
   output$sleeptimeCrossbar <- renderPlot({
     (
       Data |>
@@ -201,19 +283,13 @@ server <- function(input, output) {
       geom_boxplot() + 
       theme_minimal()
   })
-  output$heatmap1 <- renderPlot({
-    pom1 <- generate_pom(Sebastian)
+  
+  
+  output$heatmap <- renderPlot({
+    tmp <- Data %>% 
+      filter(sleeper == input$selectSleeper)
+    pom1 <- generate_pom(tmp)
     p <- plot(pom1)
-    p
-  })
-  output$heatmap2 <- renderPlot({
-    pom2 <- generate_pom(Piotr)
-    p <- plot(pom2)
-    p
-  })
-  output$heatmap3 <- renderPlot({
-    pom3 <- generate_pom(Olek)
-    p <- plot(pom3)
     p
   })
   
@@ -240,9 +316,66 @@ server <- function(input, output) {
         axis.text.y = element_blank()
       )
   })
+  
+  
+  ########## ui3 - aniamacja ##########
+  
+  
+  output$bar_plot <- renderPlot({
+    
+    filtered_data <- Data %>% 
+      filter(day <= input$day) %>%
+      group_by(sleeper) %>%
+      mutate(CumulativeSleepHours = as.numeric(sum(Time.asleep..seconds.)/ 3600)) %>% 
+      summarise(CumulativeSleepHours = max(CumulativeSleepHours, na.rm = TRUE)) %>% 
+      arrange(desc(CumulativeSleepHours))
+    
+    #Set colors for persons
+    custom_colors <- c("Sebastian" = "blue", "Piotr" = "red", "Olek" = "green")
+    
+    
+    ggplot(filtered_data, aes(x = reorder(sleeper, CumulativeSleepHours), y = CumulativeSleepHours, fill = sleeper)) +
+      geom_col(alpha = 0.8) +
+      scale_fill_manual(values = custom_colors) +
+      labs(
+        title = paste("Kumulatywna ilość snu do dnia", input$day),
+        x = "Osoba",
+        y = "Czas snu (godziny)"
+      ) +
+      theme_minimal() +
+      theme(legend.position = "none") +
+      coord_flip()
+    
+  })
+  
+  
+  
 }
 
+
+app_ui <- navbarPage(
+  title = "Analiza danych",
+  tabPanel("Ogólne dane", ui1),
+  tabPanel("Indywidualne dane", ui2),
+  tabPanel("Animacja", ui3),
+  theme = bslib::bs_theme(bootswatch = "darkly", 
+                          primary = "#4CAF50",  # Zielony jako kolor główny
+                          secondary = "#434343", # Żółty jako kolor akcentu
+                          bg = "#222222",       # Tło
+                          fg = "#FFFFFF",
+                          success = "#00BC8C"),
+  header = tags$head(),
+  footer = shiny::HTML("
+                <footer class='text-center text-sm-start' style='width:100%;'>
+                <hr>
+                <p class='text-center' style='font-size:12px;'>
+                  © 2021 Copyright:
+                  <a class='text-dark' href='https://www.mi2.ai/'>MI2</a>
+                </p>
+                </footer>
+                ")
+  
+)
+
 # Run the application 
-shinyApp(ui = ui, server = server)
-
-
+shinyApp(app_ui, server)
