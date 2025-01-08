@@ -14,7 +14,8 @@ library(ggplot2)
 library(tidyr)
 library(plotly)
 library(ggridges)
-
+library(patchwork)
+library(ggalt)
 
 SebastianRaw <- read.csv2("../data/sleepdataSebastian.csv")
 PiotrRaw <- read.csv2("../data/sleepdataPiotr.csv")
@@ -116,7 +117,7 @@ ui <- fluidPage(
     
     # Show a plot of the generated distribution
     mainPanel(
-      plotOutput("sleeptimeCrossbar"),
+      plotOutput("sleeptimeCrossbar", height = "500px"),
       plotOutput("sleep_hour_dist_ridgelines"),
       plotlyOutput("sleepDistractionScatter"),
       plotOutput("acitivityBoxplot"),
@@ -131,20 +132,49 @@ ui <- fluidPage(
 # Define server logic required to draw a histogram
 server <- function(input, output) {
   output$sleeptimeCrossbar <- renderPlot({
-    Data |>
-      filter(sleeper == input$selectSleeper) |>
-      mutate(woke_up_inter = interval(day, Woke.up),
-             went_to_bed_inter = interval(day, Went.to.bed),
-             fell_asleep_time = Went.to.bed + dseconds(Asleep.after..seconds.)) |>
-      mutate(fell_asleep_inter = interval(day, fell_asleep_time))|>
-      # View()
-      ggplot(aes(x = day, y = fell_asleep_inter)) +
-      geom_crossbar(aes(ymin = went_to_bed_inter, ymax = fell_asleep_inter), fill = "#887711", colour = NA) +
-      geom_crossbar(aes(ymax = woke_up_inter, ymin = fell_asleep_inter), fill = "#223388", colour = NA) +
-      scale_y_continuous(labels = (\(x) format(make_datetime(sec = x), "%H:%M"))) +
-      labs(
-        y = "time of day"
-      )
+    (
+      Data |>
+        filter(sleeper == input$selectSleeper) |>
+        mutate(woke_up_inter = interval(day, Woke.up),
+               went_to_bed_inter = interval(day, Went.to.bed),
+               fell_asleep_time = Went.to.bed + dseconds(Asleep.after..seconds.)) |>
+        mutate(fell_asleep_inter = interval(day, fell_asleep_time))|>
+        # View()
+        ggplot(aes(x = day, y = fell_asleep_inter)) +
+        geom_crossbar(aes(ymin = went_to_bed_inter, ymax = fell_asleep_inter), fill = "#887711", colour = NA) +
+        geom_crossbar(aes(ymax = woke_up_inter, ymin = fell_asleep_inter), fill = "#223388", colour = NA) +
+        scale_y_time(labels = (\(x) format(make_datetime(sec = x), "%H:%M")),
+                     breaks = (\(x) {
+                       y <- make_datetime(sec = floor(x[1]):1:(x[2]+1));
+                       y <- y[second(y)==0 & minute(y)==0]})) +
+        labs(
+          y = "time of day"
+        ) +
+        theme(
+          axis.title.x = element_blank(),
+          axis.text.x = element_blank(),
+          axis.ticks.x = element_blank()
+        )
+    ) + (
+      Data |>
+        filter(sleeper == input$selectSleeper) |>
+        ggplot(aes(x = day, y = Sleep.Quality)) +
+        geom_xspline() +
+        ylim(min(Data$Sleep.Quality), NA) +
+        scale_y_continuous(
+          labels = (\(x) paste(100*x, "%"))
+        ) +
+        labs(
+          y = "sleep quality"
+        ) +
+        scale_x_date(date_breaks = "3 days",
+                     date_labels = "%b %e")
+    ) + plot_layout(
+      guides = "collect",
+      nrow = 2,
+      ncol = 1,
+      heights = c(0.7, 0.3)
+    )
   })
   output$sleepDistractionScatter <- renderPlotly({
     dane <- Data %>% filter(sleeper == input$selectSleeper)

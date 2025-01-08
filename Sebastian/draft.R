@@ -129,3 +129,50 @@ minutes |>
   # geom_density(alpha = 0.3) +
   # xlim(min(minutes$minute_went_to_bed), max(minutes$minute_woke_up))
   # xlim(-100, 1000)
+
+  
+library(patchwork)
+library(ggalt)
+(
+(
+Sebastian |>
+  mutate(woke_up_inter = interval(day, Woke.up),
+         went_to_bed_inter = interval(day, Went.to.bed),
+         fell_asleep_time = Went.to.bed + dseconds(Asleep.after..seconds.)) |>
+  mutate(fell_asleep_inter = interval(day, fell_asleep_time))|>
+  # View()
+  ggplot(aes(x = day, y = fell_asleep_inter)) +
+  geom_crossbar(aes(ymin = went_to_bed_inter, ymax = fell_asleep_inter), fill = "#887711", colour = NA) +
+  geom_crossbar(aes(ymax = woke_up_inter, ymin = fell_asleep_inter), fill = "#223388", colour = NA) +
+  scale_y_time(labels = (\(x) format(make_datetime(sec = x), "%H:%M")),
+               breaks = (\(x) {
+                 y <- make_datetime(sec = floor(x[1]):1:(x[2]+1));
+                 y <- y[second(y)==0 & minute(y)==0]})) +
+  labs(
+    y = "time of day"
+  ) +
+  theme(
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+) + (
+Sebastian |>
+  ggplot(aes(x = day, y = Sleep.Quality)) +
+  # geom_line() +
+  geom_xspline() +
+  ylim(min(Data$Sleep.Quality), NA) +
+  scale_y_continuous(
+    labels = (\(x) paste(100*x, "%"))
+      ) +
+  labs(
+    y = "sleep quality"
+  ) +
+  scale_x_date(date_breaks = "3 days",
+               date_labels = "%b %e")
+) + plot_layout(
+  guides = "collect",
+  nrow = 2,
+  ncol = 1,
+  heights = c(0.7, 0.3)
+))
