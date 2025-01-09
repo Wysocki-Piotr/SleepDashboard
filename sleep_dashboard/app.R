@@ -13,12 +13,12 @@ library(ggalt)
 library(jpeg)
 
 SebastianRaw <- read.csv2("../data/sleepdataSebastian.csv")
-PiotrRaw <-  read.csv2("../data/sleepdataPiotr (2).csv")
+PiotrRaw <-  read.csv2("../data/sleepdataPiotr.csv")
 OlekRaw <- read.csv("../data/sleepdataOlek.csv")
 
-img1 <- readJPEG("C:/Users/Admin/Downloads/Olek.jpg")
-img2 <- readJPEG("C:/Users/Admin/Downloads/Piotr.jpg")
-img3 <- readJPEG("C:/Users/Admin/Downloads/Seba_morda_2.jpg")
+img1 <- readJPEG("../data/GoraceFocie/Olek.jpg")
+img2 <- readJPEG("../data/GoraceFocie/Piotr.jpg")
+img3 <- readJPEG("../data/GoraceFocie/Seba_morda_2.jpg")
 
 parse_percentage <- function(str) {
   as.numeric(substr(str, 1, nchar(str)-1))/100
