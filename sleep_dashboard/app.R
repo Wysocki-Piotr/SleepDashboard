@@ -359,9 +359,9 @@ app_ui <- navbarPage(
   tabPanel("Indywidualne dane", ui2),
   tabPanel("Animacja", ui3),
   theme = bslib::bs_theme(bootswatch = "darkly", 
-                          primary = "#4CAF50",  # Zielony jako kolor główny
-                          secondary = "#434343", # Żółty jako kolor akcentu
-                          bg = "#222222",       # Tło
+                          primary = "#F39C12",
+                          secondary = "#434343",
+                          bg = "#222222",   
                           fg = "#FFFFFF",
                           success = "#00BC8C"),
   header = tags$head(),
