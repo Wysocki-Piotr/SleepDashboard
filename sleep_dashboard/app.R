@@ -16,10 +16,6 @@ SebastianRaw <- read.csv2("../data/sleepdataSebastian.csv")
 PiotrRaw <-  read.csv2("../data/sleepdataPiotr.csv")
 OlekRaw <- read.csv("../data/sleepdataOlek.csv")
 
-img1 <- readJPEG("../data/GoraceFocie/Olek.jpg")
-img2 <- readJPEG("../data/GoraceFocie/Piotr.jpg")
-img3 <- readJPEG("../data/GoraceFocie/Seba_morda_2.jpg")
-
 parse_percentage <- function(str) {
   as.numeric(substr(str, 1, nchar(str)-1))/100
 }
@@ -199,15 +195,15 @@ server <- function(input, output) {
   })
   
   output$img1 <- renderUI({
-    img(src = img1, width = "150px")
+    img(src = "Olek.jpg", width = 150)
   })
   
   output$img2 <- renderUI({
-    img(src = img2, width = "150px")
+    img(src = "Piotr.jpg", width = 150)
   })
   
   output$img3 <- renderUI({
-    img(src = , width = "150px")
+    img(src = "Seba_morda_2.jpg", width = 150)
   })
 
 
