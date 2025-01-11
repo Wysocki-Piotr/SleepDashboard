@@ -1,3 +1,6 @@
+# ------------------------------------------------------------------------------
+# Biblioteki
+# ------------------------------------------------------------------------------
 
 library(shiny)
 library(dplyr)
@@ -12,9 +15,18 @@ library(patchwork)
 library(ggalt)
 library(jpeg)
 
+# ------------------------------------------------------------------------------
+# Wgranie danych
+# ------------------------------------------------------------------------------
+
 SebastianRaw <- read.csv2("../data/sleepdataSebastian.csv")
 PiotrRaw <-  read.csv2("../data/sleepdataPiotr.csv")
 OlekRaw <- read.csv("../data/sleepdataOlek.csv")
+
+
+# ------------------------------------------------------------------------------
+# Przetworzenie danych
+# ------------------------------------------------------------------------------
 
 parse_percentage <- function(str) {
   as.numeric(substr(str, 1, nchar(str)-1))/100
@@ -44,6 +56,16 @@ process_raw <- function(dt) {
     ))
 }
 
+Sebastian <- process_raw(SebastianRaw) |> mutate(sleeper = "Sebastian")
+Piotr <- process_raw(PiotrRaw) |> mutate(sleeper = "Piotr")
+Olek <- process_raw(OlekRaw) |> mutate(sleeper = "Olek")
+
+Data <- bind_rows(Sebastian, Piotr, Olek)
+
+# ------------------------------------------------------------------------------
+# Dodatkowe funkcje
+# ------------------------------------------------------------------------------
+
 generate_pom <- function(df){
   df %>%
     mutate(Went.to.bed = update(ymd_hms(Went.to.bed, tz = "UTC"), day = General.day.asleep),
@@ -71,84 +93,11 @@ plot <- function(df){
     scale_y_continuous(labels = function(x) ifelse(x >= 54, x - 53, x))
 }
 
+# ------------------------------------------------------------------------------
+# UI
+# ------------------------------------------------------------------------------
 
-# Sebastian <- SebastianRaw |>
-#   mutate(
-#     Sleep.Quality = parse_percentage(Sleep.Quality),
-#     Regularity = parse_percentage(Regularity),
-#     Did.snore = Did.snore == "true",
-#     Went.to.bed = as.POSIXct(Went.to.bed),
-#     Woke.up = as.POSIXct(Woke.up),
-#     day = as.Date(Woke.up)
-#   ) |>
-#   select(-c(
-#     City,
-#     Alertness.score,
-#     Alertness.reaction.time..seconds.,
-#     Alertness.accuracy
-#   ))
-
-Sebastian <- process_raw(SebastianRaw) |> mutate(sleeper = "Sebastian")
-Piotr <- process_raw(PiotrRaw) |> mutate(sleeper = "Piotr")
-Olek <- process_raw(OlekRaw) |> mutate(sleeper = "Olek")
-
-Data <- bind_rows(Sebastian, Piotr, Olek)
-
-# Define UI for application that draws a histogram
-ui1 <- fluidPage(
-  titlePanel("Ogólne dane"),
-  mainPanel(
-    plotOutput("radar_plot"),
-    plotOutput("sleep_hour_dist_ridgelines"),
-    plotOutput("density_plot")
-  )
-)
-
-
-
-ui2 <- fluidPage(
-  
-  # Application title
-  titlePanel("Indywidualne dane"),
-  
-  # Sidebar with a slider input for number of bins 
-  sidebarLayout(
-    sidebarPanel(
-      selectInput("selectSleeper",
-                  "Select a sleeper(person)",
-                  unique(Data$sleeper),
-                  selected = "Sebastian")
-    ),
-    
-    # Show a plot of the generated distribution
-    mainPanel(
-      plotOutput("sleeptimeCrossbar", height = "500px"),
-      plotlyOutput("sleepDistractionScatter"),
-      plotOutput("acitivityBoxplot"),
-      plotOutput("heatmap")
-    )
-    
-  )
-)
-
-ui3 <- fluidPage(
-  titlePanel("Kumulatywna ilość snu"),
-  sidebarLayout(
-    sidebarPanel(
-      sliderInput("day", "Wybierz dzień:", 
-                  min = min(Data$day), 
-                  max = max(Data$day), 
-                  value = min(Data$day), 
-                  step = 1, 
-                  animate = animationOptions(interval = 500, loop = FALSE))
-    ),
-    mainPanel(
-      plotOutput("bar_plot")
-    )
-  )
-)
-
-ui4 <- fluidPage(
+main_page <- fluidPage(
   fluidRow(
     column(12, 
            h1("Główny Opis")
@@ -173,26 +122,74 @@ ui4 <- fluidPage(
   )
 )
 
+general_data_page <- fluidPage(
+  titlePanel("Ogólne dane"),
+  mainPanel(
+    plotOutput("radar_plot"),
+    plotOutput("sleep_hour_dist_ridgelines"),
+    plotOutput("density_plot")
+  )
+)
 
-# Define server logic required to draw a histogram
+individual_data_page <- fluidPage(
+  titlePanel("Indywidualne dane"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("selectSleeper",
+                  "Select a sleeper(person)",
+                  unique(Data$sleeper),
+                  selected = "Sebastian")
+    ),
+    mainPanel(
+      plotOutput("sleeptimeCrossbar", height = "500px"),
+      plotlyOutput("sleepDistractionScatter"),
+      plotOutput("acitivityBoxplot"),
+      plotOutput("heatmap")
+    )
+  )
+)
+
+animation_page <- fluidPage(
+  titlePanel("Kumulatywna ilość snu"),
+  sidebarLayout(
+    sidebarPanel(
+      sliderInput("day", "Wybierz dzień:", 
+                  min = min(Data$day), 
+                  max = max(Data$day), 
+                  value = min(Data$day), 
+                  step = 1, 
+                  animate = animationOptions(interval = 500, loop = FALSE))
+    ),
+    mainPanel(
+      plotOutput("bar_plot")
+    )
+  )
+)
+
+# ------------------------------------------------------------------------------
+# serwer
+# ------------------------------------------------------------------------------
+
 server <- function(input, output) {
   
-  current_page <- reactiveVal("mainPage")
+  # ↓ To chyba nic nie robi? ↓
+  # current_page <- reactiveVal("mainPage")
+  # 
+  # observeEvent(input$mainPage, { current_page("mainPage") })
+  # observeEvent(input$generalData, { current_page("generalData") })
+  # observeEvent(input$individualData, { current_page("individualData") })
+  # observeEvent(input$animation, { current_page("animation") })
+  # output$pageContent <- renderUI({
+  #   switch(current_page(),
+  #          "mainPage" = main_page,     
+  #          "generalData" = general_data_page,      
+  #          "individualData" = individual_data_page,  
+  #          "animation" = animation_page  
+  #   )
+  # })
+  # ↑ To chyba nic nie robi? ↑
   
-  observeEvent(input$mainPage, { current_page("mainPage") })
-  observeEvent(input$generalData, { current_page("generalData") })
-  observeEvent(input$individualData, { current_page("individualData") })
-  observeEvent(input$animation, { current_page("animation") })
-  
-  
-  output$pageContent <- renderUI({
-    switch(current_page(),
-           "mainPage" = ui4,     
-           "generalData" = ui1,      
-           "individualData" = ui2,  
-           "animation" = ui3  
-    )
-  })
+  ########## main_page - strona główna ##########
   
   output$img1 <- renderUI({
     img(src = "Olek.jpg", width = 150)
@@ -205,205 +202,218 @@ server <- function(input, output) {
   output$img3 <- renderUI({
     img(src = "Seba_morda_2.jpg", width = 150)
   })
-
-
-########## ui1 - ogólne informacje ##########
-
-output$radar_plot <- renderPlot({
-  filtered_data <- Data %>% 
-    select(Sleep.Quality, Asleep.after..seconds., Regularity, Snore.time..seconds.,
-           Coughing..per.hour.,Movements.per.hour,sleeper)
   
-  min_vals <- apply(filtered_data[, -7], 2, min)
-  max_vals <- apply(filtered_data[, -7], 2, max)
-  data_norm <- as.data.frame(scale(filtered_data[, -7], center = min_vals, scale = max_vals - min_vals))
-  data_norm$sleeper <- filtered_data$sleeper
+  ########## general_data_page - ogólne informacje ##########
   
-  data_olek <- colMeans(data_norm[data_norm$sleeper == "Olek", -ncol(data_norm)])
-  data_seba <- colMeans(data_norm[data_norm$sleeper == "Sebastian", -ncol(data_norm)])
-  data_piotr <- colMeans(data_norm[data_norm$sleeper == "Piotr", -ncol(data_norm)])
-  
-  data_radar <- as.data.frame(rbind(
-    rep(1, ncol(data_norm) - 1),  
-    rep(0, ncol(data_norm) - 1),  
-    data_olek,  
-    data_seba,
-    data_piotr
-  ))
-  
-  radarchart(data_radar,
-             axistype = 1, 
-             pcol = c("blue", "red", "green"),  
-             pfcol = c("#0000FF50", "#FF000050", "lightgreen"),  
-             plwd = 2,  
-             cglcol = "grey",  
-             cglty = 1, 
-             axislabcol = "black",  
-             vlcex = 0.8  
-  )
-  legend("topright", legend = c("Olek", "Seba", "Piotr"), col = c("blue", "red", "green"), lty = 1, lwd = 2)
-  
-  
-})
-
-
-output$density_plot <- renderPlot({
-  mean_df <- Data %>% 
-    group_by(sleeper) %>% 
-    summarise(mean_SQ = mean(Sleep.Quality))
-  
-  density_plot <- ggplot(Data, aes(x = Sleep.Quality, fill = sleeper)) + 
-    geom_density(alpha = 0.3) +
-    geom_vline(data = mean_df, aes(xintercept = mean_SQ, color = sleeper),
-               linetype = "dashed") + 
-    theme_minimal()
-  density_plot
-})
-
-
-
-
-
-
-########## ui2 - indywidualne informacje ##########
-
-output$sleeptimeCrossbar <- renderPlot({
-  (
-    Data |>
-      filter(sleeper == input$selectSleeper) |>
-      mutate(woke_up_inter = interval(day, Woke.up),
-             went_to_bed_inter = interval(day, Went.to.bed),
-             fell_asleep_time = Went.to.bed + dseconds(Asleep.after..seconds.)) |>
-      mutate(fell_asleep_inter = interval(day, fell_asleep_time))|>
-      # View()
-      ggplot(aes(x = day, y = fell_asleep_inter)) +
-      geom_crossbar(aes(ymin = went_to_bed_inter, ymax = fell_asleep_inter), fill = "#887711", colour = NA) +
-      geom_crossbar(aes(ymax = woke_up_inter, ymin = fell_asleep_inter), fill = "#223388", colour = NA) +
-      scale_y_time(labels = (\(x) format(make_datetime(sec = x), "%H:%M")),
-                   breaks = (\(x) {
-                     y <- make_datetime(sec = floor(x[1]):1:(x[2]+1));
-                     y <- y[second(y)==0 & minute(y)==0]})) +
-      labs(
-        y = "time of day"
-      ) +
-      theme(
-        axis.title.x = element_blank(),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank()
-      )
-  ) + (
-    Data |>
-      filter(sleeper == input$selectSleeper) |>
-      ggplot(aes(x = day, y = Sleep.Quality)) +
-      geom_xspline() +
-      ylim(min(Data$Sleep.Quality), NA) +
-      scale_y_continuous(
-        labels = (\(x) paste(100*x, "%"))
-      ) +
-      labs(
-        y = "sleep quality"
-      ) +
-      scale_x_date(date_breaks = "3 days",
-                   date_labels = "%b %e")
-  ) + plot_layout(
-    guides = "collect",
-    nrow = 2,
-    ncol = 1,
-    heights = c(0.7, 0.3)
-  )
-})
-output$sleepDistractionScatter <- renderPlotly({
-  dane <- Data %>% filter(sleeper == input$selectSleeper)
-  plot_ly(dane, x = ~Movements.per.hour, y = ~Sleep.Quality,
-          text = ~paste("Kaszlnięcia na godzinę: ", Coughing..per.hour.,
-                        "<br> Czas chrapania: ", Snore.time..seconds.),
-          hoverinfo = "text",
-          type = "scatter",
-          mode = "markers")
-})
-output$activityBoxplot <- renderPlot({
-  Piotr <- Piotr %>% 
-    mutate(activity = c(FALSE, FALSE, TRUE, FALSE,
-                        FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE,
-                        FALSE, TRUE, FALSE, TRUE, FALSE, FALSE, TRUE,
-                        FALSE, TRUE, FALSE))
-  Olek <- Olek %>% 
-    mutate(activity = c(TRUE, FALSE, FALSE, FALSE,
-                        FALSE, FALSE, FALSE, TRUE, TRUE, FALSE, TRUE,
-                        FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE,
-                        TRUE))
-  
-  ggplot(Piotr, aes(x = activity, y = Sleep.Quality)) +
-    geom_boxplot() + 
-    theme_minimal()
-})
-
-
-output$heatmap <- renderPlot({
-  tmp <- Data %>% 
-    filter(sleeper == input$selectSleeper)
-  pom1 <- generate_pom(tmp)
-  p <- plot(pom1)
-  p
-})
-
-output$sleep_hour_dist_ridgelines <- renderPlot({
-  minutes <- Data |>
-    mutate(minute_went_to_bed = unclass(interval(day, Went.to.bed)) %/% 60) |>
-    mutate(minute_woke_up = unclass(interval(day, Woke.up)) %/% 60)
-  
-  samples <- min(minutes$minute_went_to_bed):max(minutes$minute_woke_up)
-  
-  minutes |>
-    cross_join(tibble(val = samples)) |>
-    filter(minute_went_to_bed <= val & val <= minute_woke_up) |>
-    ggplot(aes(x = val, y = sleeper, fill = factor(sleeper))) +
-    stat_density_ridges(alpha = 0.6) +
-    scale_x_continuous(labels = (\(x) format(make_datetime(min = x), "%H:%M"))) +
-    labs(
-      x = "time of day",
-      y = NULL,
-      fill = "sleeper"
-    ) +
-    theme_ridges() +
-    theme(
-      axis.text.y = element_blank()
+  output$radar_plot <- renderPlot({
+    filtered_data <- Data %>% 
+      select(Sleep.Quality,
+             Asleep.after..seconds.,
+             Regularity, Snore.time..seconds.,
+             Coughing..per.hour.,
+             Movements.per.hour,
+             sleeper)
+    
+    min_vals <- apply(filtered_data[, -7], 2, min)
+    max_vals <- apply(filtered_data[, -7], 2, max)
+    data_norm <- as.data.frame(scale(filtered_data[, -7],
+                                     center = min_vals,
+                                     scale = max_vals - min_vals))
+    data_norm$sleeper <- filtered_data$sleeper
+    
+    data_olek <- colMeans(data_norm[data_norm$sleeper == "Olek", -ncol(data_norm)])
+    data_seba <- colMeans(data_norm[data_norm$sleeper == "Sebastian", -ncol(data_norm)])
+    data_piotr <- colMeans(data_norm[data_norm$sleeper == "Piotr", -ncol(data_norm)])
+    
+    data_radar <- as.data.frame(rbind(
+      rep(1, ncol(data_norm) - 1),  
+      rep(0, ncol(data_norm) - 1),  
+      data_olek,  
+      data_seba,
+      data_piotr
+    ))
+    
+    
+    output$sleep_hour_dist_ridgelines <- renderPlot({
+      minutes <- Data |>
+        mutate(minute_went_to_bed = unclass(interval(day, Went.to.bed)) %/% 60) |>
+        mutate(minute_woke_up = unclass(interval(day, Woke.up)) %/% 60)
+      
+      samples <- min(minutes$minute_went_to_bed):max(minutes$minute_woke_up)
+      
+      minutes |>
+        cross_join(tibble(val = samples)) |>
+        filter(minute_went_to_bed <= val & val <= minute_woke_up) |>
+        ggplot(aes(x = val, y = sleeper, fill = factor(sleeper))) +
+        stat_density_ridges(alpha = 0.6) +
+        scale_x_continuous(
+          labels = (\(x) format(make_datetime(min = x), "%H:%M"))
+          ) +
+        labs(
+          x = "time of day",
+          y = NULL,
+          fill = "sleeper"
+        ) +
+        theme_ridges() +
+        theme(
+          axis.text.y = element_blank()
+        )
+    })
+    
+    radarchart(data_radar,
+               axistype = 1, 
+               pcol = c("blue", "red", "green"),  
+               pfcol = c("#0000FF50", "#FF000050", "lightgreen"),  
+               plwd = 2,  
+               cglcol = "grey",  
+               cglty = 1, 
+               axislabcol = "black",  
+               vlcex = 0.8  
     )
-})
-
-
-########## ui3 - aniamacja ##########
-
-
-output$bar_plot <- renderPlot({
-  
-  filtered_data <- Data %>% 
-    filter(day <= input$day) %>%
-    group_by(sleeper) %>%
-    mutate(CumulativeSleepHours = as.numeric(sum(Time.asleep..seconds.)/ 3600)) %>% 
-    summarise(CumulativeSleepHours = max(CumulativeSleepHours, na.rm = TRUE)) %>% 
-    arrange(desc(CumulativeSleepHours))
-  
-  #Set colors for persons
-  custom_colors <- c("Sebastian" = "blue", "Piotr" = "red", "Olek" = "green")
+    
+    legend("topright",
+           legend = c("Olek", "Seba", "Piotr"),
+           col = c("blue", "red", "green"),
+           lty = 1,
+           lwd = 2)
+  })
   
   
-  ggplot(filtered_data, aes(x = reorder(sleeper, CumulativeSleepHours), y = CumulativeSleepHours, fill = sleeper)) +
-    geom_col(alpha = 0.8) +
-    scale_fill_manual(values = custom_colors) +
-    labs(
-      title = paste("Kumulatywna ilość snu do dnia", input$day),
-      x = "Osoba",
-      y = "Czas snu (godziny)"
-    ) +
-    theme_minimal() +
-    theme(legend.position = "none") +
-    coord_flip()
+  output$density_plot <- renderPlot({
+    mean_df <- Data %>% 
+      group_by(sleeper) %>% 
+      summarise(mean_SQ = mean(Sleep.Quality))
+    
+    density_plot <- ggplot(Data, aes(x = Sleep.Quality, fill = sleeper)) + 
+      geom_density(alpha = 0.3) +
+      geom_vline(data = mean_df,
+                 aes(xintercept = mean_SQ, color = sleeper),
+                 linetype = "dashed") + 
+      theme_minimal()
+    density_plot
+  })
   
-})
-
-
+  ########## individual_data_page - indywidualne informacje ##########
+  
+  output$sleeptimeCrossbar <- renderPlot({
+    (
+      Data |>
+        filter(sleeper == input$selectSleeper) |>
+        mutate(woke_up_inter = interval(day, Woke.up),
+               went_to_bed_inter = interval(day, Went.to.bed),
+               fell_asleep_time = Went.to.bed + dseconds(Asleep.after..seconds.)) |>
+        mutate(fell_asleep_inter = interval(day, fell_asleep_time))|>
+        # View()
+        ggplot(aes(x = day, y = fell_asleep_inter)) +
+        geom_crossbar(aes(ymin = went_to_bed_inter, ymax = fell_asleep_inter), fill = "#887711", colour = NA) +
+        geom_crossbar(aes(ymax = woke_up_inter, ymin = fell_asleep_inter), fill = "#223388", colour = NA) +
+        scale_y_time(labels = (\(x) format(make_datetime(sec = x), "%H:%M")),
+                     breaks = (\(x) {
+                       y <- make_datetime(sec = floor(x[1]):1:(x[2]+1));
+                       y <- y[second(y)==0 & minute(y)==0]})) +
+        labs(
+          y = "time of day"
+        ) +
+        theme(
+          axis.title.x = element_blank(),
+          axis.text.x = element_blank(),
+          axis.ticks.x = element_blank()
+        )
+    ) + (
+      Data |>
+        filter(sleeper == input$selectSleeper) |>
+        ggplot(aes(x = day, y = Sleep.Quality)) +
+        geom_xspline() +
+        ylim(min(Data$Sleep.Quality), NA) +
+        scale_y_continuous(
+          labels = (\(x) paste(100*x, "%"))
+        ) +
+        labs(
+          y = "sleep quality"
+        ) +
+        scale_x_date(date_breaks = "3 days",
+                     date_labels = "%b %e")
+    ) + plot_layout(
+      guides = "collect",
+      nrow = 2,
+      ncol = 1,
+      heights = c(0.7, 0.3)
+    )
+  })
+  
+  
+  output$sleepDistractionScatter <- renderPlotly({
+    dane <- Data %>% filter(sleeper == input$selectSleeper)
+    plot_ly(dane, x = ~Movements.per.hour, y = ~Sleep.Quality,
+            text = ~paste("Kaszlnięcia na godzinę: ", Coughing..per.hour.,
+                          "<br> Czas chrapania: ", Snore.time..seconds.),
+            hoverinfo = "text",
+            type = "scatter",
+            mode = "markers")
+  })
+  
+  
+  output$activityBoxplot <- renderPlot({
+    Piotr <- Piotr %>% 
+      mutate(activity = c(FALSE, FALSE, TRUE, FALSE,
+                          FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE,
+                          FALSE, TRUE, FALSE, TRUE, FALSE, FALSE, TRUE,
+                          FALSE, TRUE, FALSE))
+    Olek <- Olek %>% 
+      mutate(activity = c(TRUE, FALSE, FALSE, FALSE,
+                          FALSE, FALSE, FALSE, TRUE, TRUE, FALSE, TRUE,
+                          FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE,
+                          TRUE))
+    
+    ggplot(Piotr, aes(x = activity, y = Sleep.Quality)) +
+      geom_boxplot() + 
+      theme_minimal()
+  })
+  
+  
+  output$heatmap <- renderPlot({
+    tmp <- Data %>% 
+      filter(sleeper == input$selectSleeper)
+    pom1 <- generate_pom(tmp)
+    p <- plot(pom1)
+    p
+  })
+  
+  
+  ########## animation_page - aniamacja ##########
+  
+  
+  output$bar_plot <- renderPlot({
+    
+    filtered_data <- Data %>% 
+      filter(day <= input$day) %>%
+      group_by(sleeper) %>%
+      mutate(CumulativeSleepHours = as.numeric(sum(Time.asleep..seconds.)/ 3600)) %>% 
+      summarise(CumulativeSleepHours = max(CumulativeSleepHours, na.rm = TRUE)) %>% 
+      arrange(desc(CumulativeSleepHours))
+    
+    #Set colors for persons
+    custom_colors <- c("Sebastian" = "blue", "Piotr" = "red", "Olek" = "green")
+    
+    
+    ggplot(filtered_data, aes(x = reorder(sleeper, CumulativeSleepHours), y = CumulativeSleepHours, fill = sleeper)) +
+      geom_col(alpha = 0.8) +
+      scale_fill_manual(values = custom_colors) +
+      labs(
+        title = paste("Kumulatywna ilość snu do dnia", input$day),
+        x = "Osoba",
+        y = "Czas snu (godziny)"
+      ) +
+      theme_minimal() +
+      theme(legend.position = "none") +
+      coord_flip()
+    
+  })
 }
+
+# ------------------------------------------------------------------------------
+# aplikacja
+# ------------------------------------------------------------------------------
 
 app_ui <- navbarPage(
   title = div(
@@ -411,10 +421,10 @@ app_ui <- navbarPage(
     "MiNI REST",
     icon("bed", style = "color: darkblue; font-size: 24px;"),
   ),
-  tabPanel("Main page", ui4),
-  tabPanel("Ogólne dane", ui1),
-  tabPanel("Indywidualne dane", ui2),
-  tabPanel("Animacja", ui3),
+  tabPanel("Main page", main_page),
+  tabPanel("Ogólne dane", general_data_page),
+  tabPanel("Indywidualne dane", individual_data_page),
+  tabPanel("Animacja", animation_page),
   theme = bslib::bs_theme(bootswatch = "darkly", 
                           primary = "#F39C12",
                           secondary = "#3498DB",
