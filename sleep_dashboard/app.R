@@ -14,15 +14,15 @@ library(fmsb)
 library(patchwork)
 library(ggalt)
 library(jpeg)
+library(shinydashboard)
 
 # ------------------------------------------------------------------------------
 # Wgranie danych
 # ------------------------------------------------------------------------------
 
 SebastianRaw <- read.csv2("../data/sleepdataSebastian.csv")
-PiotrRaw <-  read.csv2("../data/sleepdataPiotr.csv")
+PiotrRaw <-  read.csv2("../data/sleepdataPiotr (3).csv")
 OlekRaw <- read.csv("../data/sleepdataOlek.csv")
-
 
 # ------------------------------------------------------------------------------
 # Przetworzenie danych
@@ -92,17 +92,77 @@ plot <- function(df){
     ) + labs(x = "Dzień tygodnia", y = "Numer tygodnia w roku") +
     scale_y_continuous(labels = function(x) ifelse(x >= 54, x - 53, x))
 }
-
+# ------------------------------------------------------------------------------
+# Wartości do boxów
+# ------------------------------------------------------------------------------
+Sleep.Time.Mean <- round(sum(Data$Time.asleep..seconds./3600) / nrow(Data),2)
+Sleep.Time.Min <- round(min(Data$Time.asleep..seconds.)/3600, 2)
+Sleep.Time.Max <- round(max(Data$Time.asleep..seconds.)/3600, 2)
 # ------------------------------------------------------------------------------
 # UI
 # ------------------------------------------------------------------------------
 
 main_page <- fluidPage(
+  tags$head(
+    tags$style(HTML("
+      .custom-box {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        font-size: 1.5em;
+        font-weight: bold;
+        color: white;
+        text-align: center;
+        border-radius: 5px;
+        height: 150px; /* Wysokość prostokąta */
+        margin: 5px;  /* Małe odstępy między boxami */
+      }
+      .navy { background-color: #001f3f; }
+      .green { background-color: #2ECC40; }
+      .red { background-color: #FF4136; }
+    "))
+  ),
+  
   fluidRow(
-    column(12, 
-           h1("Główny Opis")
+    column(4,
+           div(class = "custom-box navy", 
+               icon("moon"),
+               div(
+                 style = "font-size: 2em; margin-bottom: 5px;",
+                 paste(" ", as.character(Sleep.Time.Mean))
+               ),
+               div("Average Sleep Time in hours")
+           )
+    ),
+    column(4,
+           div(class = "custom-box red", 
+               icon("clock"),
+               div(
+                 style = "font-size: 2em; margin-bottom: 5px;",
+                 paste(" ", as.character(Sleep.Time.Min))
+               ),
+               div("Shortest sleep in hours")
+           )
+    ),
+    column(4,
+           div(class = "custom-box green", 
+               icon("mattress-pillow"),
+               div(
+                 style = "font-size: 2em; margin-bottom: 5px;",
+                 paste(" ", as.character(Sleep.Time.Max))
+               ),
+               div("Longest sleep in hours")
+           )
     )
   ),
+  fluidRow(
+    column(12,
+           h1("Main Description"),
+           p("This is the main description section where you can provide additional details about the content displayed above.")
+    )
+  ),
+  
   fluidRow(
     column(4,
            uiOutput("img1"),
@@ -122,34 +182,85 @@ main_page <- fluidPage(
   )
 )
 
-general_data_page <- fluidPage(
-  titlePanel("Ogólne dane"),
-  mainPanel(
-    plotOutput("radar_plot"),
-    plotOutput("sleep_hour_dist_ridgelines"),
-    plotOutput("density_plot")
-  )
-)
 
-individual_data_page <- fluidPage(
-  titlePanel("Indywidualne dane"),
-  sidebarLayout(
-    sidebarPanel(
-      selectInput("selectSleeper",
-                  "Select a sleeper(person)",
-                  unique(Data$sleeper),
-                  selected = "Sebastian")
+general_data_page <- fluidPage( # pytanie gdzie dac opisy i do jakich wykresow
+  # bo do radar plot chyba bez sensu?
+  titlePanel("Who has the best sleep?"),
+  fluidRow(
+    column(6,
+           dateRangeInput("dateSelector", "Select a Date:", 
+                     format = "yyyy-mm-dd",
+                     start = "2024-12-11",
+                     end = "2025-12-31",
+                     min = "2024-12-11",
+                     max = "2025-12-31") # poprawic na koncu
+    )
+  ),
+  mainPanel(
+    fluidRow(
+      column(6,
+             h3("Description"),
+             p("opis sekcji np. w swieta lepiej, godziny wstawania etc"),
+      ),
+      column(6,
+             h5("tytuł"),
+             plotOutput("radar_plot")
+      )
     ),
-    mainPanel(
-      plotOutput("sleeptimeCrossbar", height = "500px"),
-      plotlyOutput("sleepDistractionScatter"),
-      plotOutput("acitivityBoxplot"),
-      plotOutput("heatmap")
+    fluidRow(
+      column(6,
+             h5("tytuł"),
+             plotOutput("sleep_hour_dist_ridgelines")
+      ),
+      column(6,
+             h5("tytuł"),
+             plotOutput("density_plot")
+      )
     )
   )
 )
 
+
+individual_data_page <- fluidPage(
+    tags$style(HTML("
+    .sidebar-layout .sidebar {
+      border-right: 3px solid white;  /* Grubość 3px, kolor biały */
+    }
+  ")),
+  titlePanel("Let's dive deeper into each of our sleep!"),
+  fluidRow("Opis całej strony"),
+  
+  fluidRow(
+    column(12,
+           selectInput("selectSleeper", 
+                       "Select a sleeper (person):",
+                       unique(Data$sleeper),
+                       selected = "Sebastian")
+    )),
+  sidebarLayout(
+    sidebarPanel(
+      h2("What happens during our sleep?"),
+      h5("Tytuł wykresu"),
+      plotlyOutput("sleepDistractionScatter", height = "400px"),
+      h2("Is physical activity related to sleep quality?"),
+      h5("Tytuł wykresu"),
+      plotOutput("acitivityBoxplot", height = "400px"),
+    ),
+    mainPanel(
+      h2("How was our sleep in specific days?"),
+      h5("Tytuł wykresu"),
+      plotOutput("sleeptimeCrossbar", height = "400px"),
+      h2("Is there a most stressful day of the week for each of us?"),
+      h5("Tytuł wykresu"),
+      plotOutput("heatmap", height = "500px"),
+      p("Ewentualne miejsce na komentarz")
+    )
+  )
+)
+
+
 animation_page <- fluidPage(
+  # mozna tez wrzucic jakis krotki tekst do tej wizualizacji
   titlePanel("Kumulatywna ilość snu"),
   sidebarLayout(
     sidebarPanel(
@@ -172,23 +283,6 @@ animation_page <- fluidPage(
 
 server <- function(input, output) {
   
-  # ↓ To chyba nic nie robi? ↓
-  # current_page <- reactiveVal("mainPage")
-  # 
-  # observeEvent(input$mainPage, { current_page("mainPage") })
-  # observeEvent(input$generalData, { current_page("generalData") })
-  # observeEvent(input$individualData, { current_page("individualData") })
-  # observeEvent(input$animation, { current_page("animation") })
-  # output$pageContent <- renderUI({
-  #   switch(current_page(),
-  #          "mainPage" = main_page,     
-  #          "generalData" = general_data_page,      
-  #          "individualData" = individual_data_page,  
-  #          "animation" = animation_page  
-  #   )
-  # })
-  # ↑ To chyba nic nie robi? ↑
-  
   ########## main_page - strona główna ##########
   
   output$img1 <- renderUI({
@@ -207,6 +301,8 @@ server <- function(input, output) {
   
   output$radar_plot <- renderPlot({
     filtered_data <- Data %>% 
+      filter(day %within% interval(input$dateSelector[1],
+      input$dateSelector[2])) %>% 
       select(Sleep.Quality,
              Asleep.after..seconds.,
              Regularity, Snore.time..seconds.,
@@ -236,6 +332,7 @@ server <- function(input, output) {
     
     output$sleep_hour_dist_ridgelines <- renderPlot({
       minutes <- Data |>
+        filter(day %within% interval(input$dateSelector[1], input$dateSelector[2])) |>
         mutate(minute_went_to_bed = unclass(interval(day, Went.to.bed)) %/% 60) |>
         mutate(minute_woke_up = unclass(interval(day, Woke.up)) %/% 60)
       
@@ -248,7 +345,7 @@ server <- function(input, output) {
         stat_density_ridges(alpha = 0.6) +
         scale_x_continuous(
           labels = (\(x) format(make_datetime(min = x), "%H:%M"))
-          ) +
+        ) +
         labs(
           x = "time of day",
           y = NULL,
@@ -281,6 +378,7 @@ server <- function(input, output) {
   
   output$density_plot <- renderPlot({
     mean_df <- Data %>% 
+      filter(day %within% interval(input$dateSelector[1], input$dateSelector[2])) %>% 
       group_by(sleeper) %>% 
       summarise(mean_SQ = mean(Sleep.Quality))
     
@@ -365,7 +463,8 @@ server <- function(input, output) {
                           FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE,
                           TRUE))
     
-    ggplot(Piotr, aes(x = activity, y = Sleep.Quality)) +
+    ggplot(ifelse(input$selectSleeper == 2, Piotr, Olek),
+           aes(x = activity, y = Sleep.Quality)) +
       geom_boxplot() + 
       theme_minimal()
   })
@@ -442,6 +541,11 @@ app_ui <- navbarPage(
                 </footer>
                 ")
 )
+
+# Run the application 
+shinyApp(app_ui, server)
+
+
 
 # Run the application 
 shinyApp(app_ui, server)
