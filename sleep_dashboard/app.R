@@ -15,6 +15,7 @@ library(patchwork)
 library(ggalt)
 library(jpeg)
 library(shinydashboard)
+library(thematic)
 
 # ------------------------------------------------------------------------------
 # Wgranie danych
@@ -88,19 +89,30 @@ plot <- function(df){
     scale_fill_gradientn(colors = hcl.colors(50, "RdYlGn"), limits = c(0.25, 1)) +
     theme_minimal() +
     theme(
-      panel.grid = element_blank()
+      panel.grid = element_blank(),
+      text = theme_get()$text
     ) + labs(x = "Dzień tygodnia", y = "Numer tygodnia w roku") +
     scale_y_continuous(labels = function(x) ifelse(x >= 54, x - 53, x))
 }
+
 # ------------------------------------------------------------------------------
 # Wartości do boxów
 # ------------------------------------------------------------------------------
+
 Sleep.Time.Mean <- round(sum(Data$Time.asleep..seconds./3600) / nrow(Data),2)
 Sleep.Time.Min <- round(min(Data$Time.asleep..seconds.)/3600, 2)
 Sleep.Time.Max <- round(max(Data$Time.asleep..seconds.)/3600, 2)
+
 # ------------------------------------------------------------------------------
 # UI
 # ------------------------------------------------------------------------------
+
+thematic_on()
+theme_set(
+  theme(
+    text = element_text(colour = "white")
+  )
+)
 
 main_page <- fluidPage(
   tags$head(
@@ -329,20 +341,28 @@ server <- function(input, output) {
       data_piotr))
     
     
+    clrs <- palette()[1:3]
+    # Analogicznie do tego co było ↓
+    # clrs_alpha <- c(clrs[1], alpha(clrs[2:3], 0.3125))
+    # W ten sposób widać podpisaną oś ↓
+    clrs_alpha <- alpha(clrs, 0.3125)
     radarchart(data_radar,
                axistype = 1, 
-               pcol = c("blue", "red", "green"),  
-               pfcol = c("#0000FF50", "#FF000050", "lightgreen"),  
+               # pcol = c("blue", "red", "green"),
+               pcol = clrs,
+               pfcol = clrs_alpha,
+                 # c("#0000FF50", "#FF000050", "lightgreen"),
                plwd = 2,  
                cglcol = "grey",  
                cglty = 1, 
-               axislabcol = "black",  
+               axislabcol = theme_get()$text$colour,
                vlcex = 0.8  
     )
-    
+   
     legend("topright",
            legend = c("Olek", "Seba", "Piotr"),
-           col = c("blue", "red", "green"),
+           # col = c("blue", "red", "green"),
+           col = clrs,
            lty = 1,
            lwd = 2)
   })
@@ -370,6 +390,8 @@ server <- function(input, output) {
         ) +
         theme_ridges() +
         theme(
+          text = theme_get()$text,
+          axis.text = theme_get()$text,
           axis.text.y = element_blank()
         )
     })
@@ -391,44 +413,57 @@ server <- function(input, output) {
       geom_vline(data = mean_df,
                  aes(xintercept = mean_SQ, color = sleeper),
                  linetype = "dashed") + 
-      theme_minimal()
+      theme_minimal() +
+      theme(
+          text = theme_get()$text
+      )
     density_plot
   })
   
   ########## individual_data_page - indywidualne informacje ##########
   
   output$sleeptimeCrossbar <- renderPlot({
-    (
-      Data |>
-        filter(sleeper == input$selectSleeper) |>
+      plot_data <- Data |>
         mutate(woke_up_inter = interval(day, Woke.up),
                went_to_bed_inter = interval(day, Went.to.bed),
                fell_asleep_time = Went.to.bed + dseconds(Asleep.after..seconds.)) |>
-        mutate(fell_asleep_inter = interval(day, fell_asleep_time))|>
-        # View()
+        mutate(fell_asleep_inter = interval(day, fell_asleep_time))
+    (
+      plot_data |>
+        filter(sleeper == input$selectSleeper) |>
         ggplot(aes(x = day, y = fell_asleep_inter)) +
-        geom_crossbar(aes(ymin = went_to_bed_inter, ymax = fell_asleep_inter), fill = "#887711", colour = NA) +
-        geom_crossbar(aes(ymax = woke_up_inter, ymin = fell_asleep_inter), fill = "#223388", colour = NA) +
+        # geom_crossbar(aes(ymin = went_to_bed_inter, ymax = fell_asleep_inter),
+        #               fill = "#887711", colour = NA) +
+        geom_crossbar(aes(ymax = woke_up_inter, ymin = fell_asleep_inter),
+                 fill = palette()[2],  colour = NA) +
         scale_y_time(labels = (\(x) format(make_datetime(sec = x), "%H:%M")),
-                     breaks = (\(x) {
-                       y <- make_datetime(sec = floor(x[1]):1:(x[2]+1));
-                       y <- y[second(y)==0 & minute(y)==0]})) +
+                     breaks =  (\(x) {
+                       foo <- make_datetime(sec = floor(x[1]):(x[2]+1));
+                       foo <- foo[second(foo)==0 & minute(foo)==0]}),
+                     limits = c(
+                       min(plot_data$went_to_bed_inter),
+                       max(plot_data$woke_up_inter)
+                       )
+                     ) +
         labs(
           y = "time of day"
         ) +
         theme(
           axis.title.x = element_blank(),
           axis.text.x = element_blank(),
-          axis.ticks.x = element_blank()
+          axis.ticks.x = element_blank(),
+          panel.grid.major.x = element_blank()
         )
     ) + (
       Data |>
         filter(sleeper == input$selectSleeper) |>
         ggplot(aes(x = day, y = Sleep.Quality)) +
         geom_xspline() +
-        ylim(min(Data$Sleep.Quality), NA) +
+        # ylim(min(Data$Sleep.Quality), NA) +
         scale_y_continuous(
-          labels = (\(x) paste(100*x, "%"))
+          labels = (\(x) paste(100*x, "%")),
+          limits = c(min(Data$Sleep.Quality) - 0.05, NA),
+          breaks = 2:5 /5
         ) +
         labs(
           y = "sleep quality"
@@ -440,7 +475,16 @@ server <- function(input, output) {
       nrow = 2,
       ncol = 1,
       heights = c(0.7, 0.3)
-    )
+    ) &
+      theme(
+        panel.background = element_blank(),
+        panel.grid.major = element_line(
+          colour = alpha(theme_get()$text$colour, 0.5)),
+        axis.text = element_text(
+          size = 12,
+          colour = theme_get()$text$colour
+        )
+      )
   })
   
   
@@ -470,7 +514,10 @@ server <- function(input, output) {
     p <- ggplot(if (input$selectSleeper == "Piotr") Piotr else Olek,
            aes(x = activity, y = Sleep.Quality)) +
       geom_boxplot() + 
-      theme_minimal()
+      theme_minimal() +
+      theme(
+        text = theme_get()$text
+      )
     p
     
   })
@@ -510,7 +557,10 @@ server <- function(input, output) {
         y = "Czas snu (godziny)"
       ) +
       theme_minimal() +
-      theme(legend.position = "none") +
+      theme(
+        legend.position = "none",
+        text = theme_get()$text
+      ) +
       coord_flip()
     
   })
@@ -550,7 +600,5 @@ app_ui <- navbarPage(
 
 # Run the application 
 shinyApp(app_ui, server)
-
-
 
 
