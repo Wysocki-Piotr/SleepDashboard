@@ -21,7 +21,7 @@ library(shinydashboard)
 # ------------------------------------------------------------------------------
 
 SebastianRaw <- read.csv2("../data/sleepdataSebastian.csv")
-PiotrRaw <-  read.csv2("../data/sleepdataPiotr (3).csv")
+PiotrRaw <-  read.csv2("../data/sleepdataPiotr.csv")
 OlekRaw <- read.csv("../data/sleepdataOlek.csv")
 
 # ------------------------------------------------------------------------------
@@ -191,9 +191,9 @@ general_data_page <- fluidPage( # pytanie gdzie dac opisy i do jakich wykresow
            dateRangeInput("dateSelector", "Select a Date:", 
                      format = "yyyy-mm-dd",
                      start = "2024-12-11",
-                     end = "2025-12-31",
+                     end = "2024-12-31",
                      min = "2024-12-11",
-                     max = "2025-12-31") # poprawic na koncu
+                     max = "2024-12-31") # poprawic na koncu
     )
   ),
   mainPanel(
@@ -244,7 +244,7 @@ individual_data_page <- fluidPage(
       plotlyOutput("sleepDistractionScatter", height = "400px"),
       h2("Is physical activity related to sleep quality?"),
       h5("Tytuł wykresu"),
-      plotOutput("acitivityBoxplot", height = "400px"),
+      plotOutput("activityBoxplot", height = "400px"),
     ),
     mainPanel(
       h2("How was our sleep in specific days?"),
@@ -326,9 +326,26 @@ server <- function(input, output) {
       rep(0, ncol(data_norm) - 1),  
       data_olek,  
       data_seba,
-      data_piotr
-    ))
+      data_piotr))
     
+    
+    radarchart(data_radar,
+               axistype = 1, 
+               pcol = c("blue", "red", "green"),  
+               pfcol = c("#0000FF50", "#FF000050", "lightgreen"),  
+               plwd = 2,  
+               cglcol = "grey",  
+               cglty = 1, 
+               axislabcol = "black",  
+               vlcex = 0.8  
+    )
+    
+    legend("topright",
+           legend = c("Olek", "Seba", "Piotr"),
+           col = c("blue", "red", "green"),
+           lty = 1,
+           lwd = 2)
+  })
     
     output$sleep_hour_dist_ridgelines <- renderPlot({
       minutes <- Data |>
@@ -356,33 +373,20 @@ server <- function(input, output) {
           axis.text.y = element_blank()
         )
     })
-    
-    radarchart(data_radar,
-               axistype = 1, 
-               pcol = c("blue", "red", "green"),  
-               pfcol = c("#0000FF50", "#FF000050", "lightgreen"),  
-               plwd = 2,  
-               cglcol = "grey",  
-               cglty = 1, 
-               axislabcol = "black",  
-               vlcex = 0.8  
-    )
-    
-    legend("topright",
-           legend = c("Olek", "Seba", "Piotr"),
-           col = c("blue", "red", "green"),
-           lty = 1,
-           lwd = 2)
-  })
   
   
   output$density_plot <- renderPlot({
-    mean_df <- Data %>% 
-      filter(day %within% interval(input$dateSelector[1], input$dateSelector[2])) %>% 
+    filtered_data <- Data %>% 
+      filter(between(day, as.Date(input$dateSelector[1]), as.Date(input$dateSelector[2])))
+    print(input$dateSelector[2])
+    print(filtered_data)
+    
+    mean_df <- filtered_data %>% 
       group_by(sleeper) %>% 
       summarise(mean_SQ = mean(Sleep.Quality))
-    
-    density_plot <- ggplot(Data, aes(x = Sleep.Quality, fill = sleeper)) + 
+      
+      
+    density_plot <- ggplot(filtered_data, aes(x = Sleep.Quality, fill = sleeper)) + 
       geom_density(alpha = 0.3) +
       geom_vline(data = mean_df,
                  aes(xintercept = mean_SQ, color = sleeper),
@@ -460,13 +464,15 @@ server <- function(input, output) {
     Olek <- Olek %>% 
       mutate(activity = c(TRUE, FALSE, FALSE, FALSE,
                           FALSE, FALSE, FALSE, TRUE, TRUE, FALSE, TRUE,
-                          FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE,
+                          FALSE, FALSE, FALSE, TRUE, TRUE, FALSE, FALSE,
                           TRUE))
     
-    ggplot(ifelse(input$selectSleeper == 2, Piotr, Olek),
+    p <- ggplot(if (input$selectSleeper == "Piotr") Piotr else Olek,
            aes(x = activity, y = Sleep.Quality)) +
       geom_boxplot() + 
       theme_minimal()
+    p
+    
   })
   
   
@@ -546,8 +552,5 @@ app_ui <- navbarPage(
 shinyApp(app_ui, server)
 
 
-
-# Run the application 
-shinyApp(app_ui, server)
 
 
