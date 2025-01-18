@@ -545,12 +545,12 @@ server <- function(input, output) {
       arrange(desc(CumulativeSleepHours))
     
     #Set colors for persons
-    custom_colors <- c("Sebastian" = "blue", "Piotr" = "red", "Olek" = "green")
+    # custom_colors <- c("Sebastian" = "blue", "Piotr" = "red", "Olek" = "green")
     
     
     ggplot(filtered_data, aes(x = reorder(sleeper, CumulativeSleepHours), y = CumulativeSleepHours, fill = sleeper)) +
       geom_col(alpha = 0.8) +
-      scale_fill_manual(values = custom_colors) +
+      # scale_fill_manual(values = custom_colors) +
       labs(
         title = paste("Kumulatywna ilość snu do dnia", input$day),
         x = "Osoba",
