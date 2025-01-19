@@ -375,7 +375,7 @@ server <- function(input, output) {
     )
     
     
-    clrs <- palette()[1:3]
+    clrs <- palette()[c(1,2,4)]
     # Analogicznie do tego co było ↓
     # clrs_alpha <- c(clrs[1], alpha(clrs[2:3], 0.3125))
     # W ten sposób widać podpisaną oś ↓
@@ -414,6 +414,7 @@ server <- function(input, output) {
       mutate(minute_went_to_bed = unclass(interval(day, Went.to.bed)) %/% 60) |>
       mutate(minute_woke_up = unclass(interval(day, Woke.up)) %/% 60)
     
+    clrs <- palette()[c(1,2,4)]
     
     minutes |>
       cross_join(tibble(val = samples)) |>
@@ -422,6 +423,7 @@ server <- function(input, output) {
       filter(minute_went_to_bed <= val & val <= minute_woke_up) |>
       ggplot(aes(x = make_datetime(min = val), y = sleeper, fill = factor(sleeper))) +
       stat_density_ridges(alpha = 0.6) +
+      scale_fill_manual(values = c("Sebastian" = clrs[3], "Piotr" = clrs[2], "Olek" = clrs[1])) +
       scale_x_datetime(
         limits = c(
           make_datetime(hour = -2),
@@ -470,6 +472,7 @@ server <- function(input, output) {
   
   
   output$density_plot <- renderPlot({
+    clrs <- palette()[c(1,2,4)]
     filtered_data <- Data %>% 
       filter(between(day, as.Date(input$dateSelector[1]), as.Date(input$dateSelector[2])))
     print(input$dateSelector[2])
@@ -485,6 +488,8 @@ server <- function(input, output) {
       geom_vline(data = mean_df,
                  aes(xintercept = mean_SQ, color = sleeper),
                  linetype = "dashed") + 
+      scale_fill_manual(values = c("Sebastian" = clrs[3], "Piotr" = clrs[2], "Olek" = clrs[1])) +
+      scale_color_manual(values = c("Sebastian" = clrs[3], "Piotr" = clrs[2], "Olek" = clrs[1])) +
       theme_minimal() +
       theme(
         text = theme_get()$text
@@ -713,7 +718,6 @@ app_ui <- navbarPage(
 
 # Run the application 
 shinyApp(app_ui, server)
-
 
 
 
