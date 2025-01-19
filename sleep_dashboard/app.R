@@ -196,6 +196,19 @@ main_page <- fluidPage(
   )
 )
 
+weekday_opts_names <- c(
+  "All",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday"
+)
+
+weekday_opts <- 0:7
+names(weekday_opts) <- weekday_opts_names
 
 general_data_page <- fluidPage( # pytanie gdzie dac opisy i do jakich wykresow
   # bo do radar plot chyba bez sensu?
@@ -211,20 +224,27 @@ general_data_page <- fluidPage( # pytanie gdzie dac opisy i do jakich wykresow
     )
   ),
   mainPanel(
+    width = 12,
     fluidRow(
       column(6,
              h3("Description"),
-             p("opis sekcji np. w swieta lepiej, godziny wstawania etc"),
+             p("opis sekcji np. w swieta lepiej, godziny wstawania etc")
       ),
       column(6,
              h5("tytuł"),
-             plotOutput("radar_plot") %>% withSpinner(type = 7, size = 2, color = "#F39C12")
+             plotOutput("radar_plot", height = "600px") |> 
+               withSpinner(type = 7, size = 2, color = "#F39C12")
       )
     ),
     fluidRow(
       column(6,
-             h5("tytuł"),
-             plotOutput("sleep_hour_dist_ridgelines") %>% withSpinner(type = 7, size = 2, color = "#F39C12")
+             h5("How often are we asleep at a certain time"),
+             plotOutput("sleep_hour_dist_ridgelines") |>
+               withSpinner(type = 7, size = 2, color = "#F39C12"),
+             selectInput(
+               inputId = "weekday_selector",
+               label = "Weekdays: ",
+               choices = weekday_opts) 
       ),
       column(6,
              h5("tytuł"),
@@ -263,9 +283,9 @@ individual_data_page <- fluidPage(
     ),
     mainPanel(
       h2("How was our sleep in specific days?"),
-      h5("Tytuł wykresu"),
-      plotOutput("sleeptimeCrossbar", height = "400px") %>% withSpinner(type = 7, size = 2,
-                                                                        color = "#F39C12"),
+      h5("Sleeptime intervals and quality on a daily basis"),
+      plotOutput("sleeptimeCrossbar", height = "400px") %>% 
+        withSpinner(type = 7, size = 2, color = "#F39C12"),
       h2("Is there a most stressful day of the week for each of us?"),
       h5("Tytuł wykresu"),
       plotOutput("heatmap", height = "500px") %>% withSpinner(type = 7, size = 2,
@@ -278,10 +298,10 @@ individual_data_page <- fluidPage(
 
 animation_page <- fluidPage(
   # mozna tez wrzucic jakis krotki tekst do tej wizualizacji
-  titlePanel("Kumulatywna ilość snu"),
+  titlePanel("Cumulative sleep time"),
   sidebarLayout(
     sidebarPanel(
-      sliderInput("day", "Wybierz dzień:", 
+      sliderInput("day", "Select a day:", 
                   min = min(Data$day), 
                   max = max(Data$day), 
                   value = min(Data$day), 
@@ -289,8 +309,7 @@ animation_page <- fluidPage(
                   animate = animationOptions(interval = 500, loop = FALSE))
     ),
     mainPanel(
-      plotOutput("bar_plot") %>% withSpinner(type = 7, size = 2,
-                                             color = "#F39C12")
+      plotOutput("bar_plot") 
     )
   )
 )
@@ -346,6 +365,15 @@ server <- function(input, output) {
       data_seba,
       data_piotr))
     
+    colnames(data_radar) <- c(
+      "sleep quality",
+      "time taken to fall asleep",
+      "regularity",
+      "snore time",
+      "coughing per hour",
+      "movements per hour"
+    )
+    
     
     clrs <- palette()[1:3]
     # Analogicznie do tego co było ↓
@@ -362,7 +390,7 @@ server <- function(input, output) {
                cglcol = "grey",  
                cglty = 1, 
                axislabcol = theme_get()$text$colour,
-               vlcex = 0.8  
+               vlcex = 0.8
     )
     
     legend("topright",
@@ -381,13 +409,24 @@ server <- function(input, output) {
     
     samples <- min(minutes$minute_went_to_bed):max(minutes$minute_woke_up)
     
+    minutes <- Data |>
+      filter(day %within% interval(input$dateSelector[1], input$dateSelector[2])) |>
+      mutate(minute_went_to_bed = unclass(interval(day, Went.to.bed)) %/% 60) |>
+      mutate(minute_woke_up = unclass(interval(day, Woke.up)) %/% 60)
+    
+    
     minutes |>
       cross_join(tibble(val = samples)) |>
+      filter(input$weekday_selector == 0 |
+               input$weekday_selector == wday(day, week_start = 1)) |>
       filter(minute_went_to_bed <= val & val <= minute_woke_up) |>
-      ggplot(aes(x = val, y = sleeper, fill = factor(sleeper))) +
+      ggplot(aes(x = make_datetime(min = val), y = sleeper, fill = factor(sleeper))) +
       stat_density_ridges(alpha = 0.6) +
-      scale_x_continuous(
-        labels = (\(x) format(make_datetime(min = x), "%H:%M"))
+      scale_x_datetime(
+        limits = c(
+          make_datetime(hour = -2),
+          make_datetime(hour = 13)
+        )
       ) +
       labs(
         x = "time of day",
@@ -401,6 +440,33 @@ server <- function(input, output) {
         axis.text.y = element_blank()
       )
   })
+  # <<<<<<< HEAD
+  #     samples <- min(minutes$minute_went_to_bed):max(minutes$minute_woke_up)
+  #     
+  #     minutes |>
+  #       cross_join(tibble(val = samples)) |>
+  #       filter(minute_went_to_bed <= val & val <= minute_woke_up) |>
+  #       ggplot(aes(x = val, y = sleeper, fill = factor(sleeper))) +
+  #       stat_density_ridges(alpha = 0.6) +
+  #       scale_x_continuous(
+  #         labels = (\(x) format(make_datetime(min = x), "%H:%M"))
+  #       ) +
+  #       labs(
+  #         x = "time of day",
+  #         y = NULL,
+  #         fill = "sleeper"
+  #       ) +
+  #       theme_ridges() +
+  #       theme(
+  #         text = theme_get()$text,
+  #         axis.text = theme_get()$text,
+  #         axis.text.y = element_blank()
+  #       )
+  #   })
+  # =======
+  #     output$sleep_hour_dist_ridgelines <- renderPlot({
+  #     })
+  # >>>>>>> local
   
   
   output$density_plot <- renderPlot({
@@ -477,7 +543,7 @@ server <- function(input, output) {
         scale_x_date(date_breaks = "3 days",
                      date_labels = "%b %e")
     ) + plot_layout(
-      guides = "collect",
+      # guides = "collect",
       nrow = 2,
       ncol = 1,
       heights = c(0.7, 0.3)
@@ -489,6 +555,11 @@ server <- function(input, output) {
         axis.text = element_text(
           size = 12,
           colour = theme_get()$text$colour
+        ),
+        axis.title.y = element_text(
+          colour = theme_get()$text$colour,
+          angle = 90,
+          size = 14
         )
       )
   })
@@ -510,26 +581,26 @@ server <- function(input, output) {
                 width = 1  
               ))) %>% 
       layout(
-              paper_bgcolor = "#2C3E50",
-              plot_bgcolor = "#2C3E50",  
-              font = list(color = "#FFFFFF"),
-              xaxis = list(
-                title = "Movements per Hour",
-                color = "#FFFFFF", 
-                gridcolor = "#34495E",
-                range(0, 150)
-              ),
-              yaxis = list(
-                title = "Sleep Quality",
-                color = "#FFFFFF", 
-                gridcolor = "#34495E",
-                range = c(0.3, 1.05)
-              ),
-              hoverlabel = list(
-                bgcolor = "#2C3E50", 
-                font = list(color = "#FFFFFF")
-              )
-            )
+        paper_bgcolor = "#2C3E50",
+        plot_bgcolor = "#2C3E50",  
+        font = list(color = "#FFFFFF"),
+        xaxis = list(
+          title = "Movements per Hour",
+          color = "#FFFFFF", 
+          gridcolor = "#34495E",
+          range(0, 150)
+        ),
+        yaxis = list(
+          title = "Sleep Quality",
+          color = "#FFFFFF", 
+          gridcolor = "#34495E",
+          range = c(0.3, 1.05)
+        ),
+        hoverlabel = list(
+          bgcolor = "#2C3E50", 
+          font = list(color = "#FFFFFF")
+        )
+      )
   })
   
   
@@ -588,14 +659,17 @@ server <- function(input, output) {
       geom_col(alpha = 0.8) +
       # scale_fill_manual(values = custom_colors) +
       labs(
-        title = paste("Kumulatywna ilość snu do dnia", input$day),
-        x = "Osoba",
-        y = "Czas snu (godziny)"
+        title = paste("Cumulative sleep time till", input$day),
+        x = "Person",
+        y = "Sleep time (hours)"
       ) +
       theme_minimal() +
       theme(
-        legend.position = "none",
-        text = theme_get()$text
+        # legend.position = "none",
+        text = theme_get()$text,
+        axis.text.x = element_text(
+          colour =  theme_get()$text$colour,
+          size = 12)
       ) +
       coord_flip()
     
