@@ -394,7 +394,7 @@ server <- function(input, output) {
     )
     
     legend("topright",
-           legend = c("Olek", "Seba", "Piotr"),
+           legend = c("Olek", "Piotr", "Sebastian"),
            # col = c("blue", "red", "green"),
            col = clrs,
            lty = 1,
@@ -713,6 +713,16 @@ app_ui <- navbarPage(
 
 # Run the application 
 shinyApp(app_ui, server)
+
+
+
+
+
+
+
+
+
+
 
 
 
