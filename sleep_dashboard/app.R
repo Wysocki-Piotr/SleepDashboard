@@ -16,6 +16,7 @@ library(ggalt)
 library(jpeg)
 library(shinydashboard)
 library(thematic)
+library(shinycssloaders)
 
 # ------------------------------------------------------------------------------
 # Wgranie danych
@@ -88,11 +89,12 @@ plot <- function(df){
     geom_tile(color = "white", lwd = 1.5) +
     scale_fill_gradientn(colors = hcl.colors(50, "RdYlGn"), limits = c(0.25, 1)) +
     theme_minimal() +
+    labs(x = "Dzień tygodnia", y = "Numer tygodnia w roku") +
+    scale_y_continuous(labels = function(x) ifelse(x >= 54, x - 53, x)) +
     theme(
       panel.grid = element_blank(),
       text = theme_get()$text
-    ) + labs(x = "Dzień tygodnia", y = "Numer tygodnia w roku") +
-    scale_y_continuous(labels = function(x) ifelse(x >= 54, x - 53, x))
+    ) 
 }
 
 # ------------------------------------------------------------------------------
@@ -201,11 +203,11 @@ general_data_page <- fluidPage( # pytanie gdzie dac opisy i do jakich wykresow
   fluidRow(
     column(6,
            dateRangeInput("dateSelector", "Select a Date:", 
-                     format = "yyyy-mm-dd",
-                     start = "2024-12-11",
-                     end = "2024-12-31",
-                     min = "2024-12-11",
-                     max = "2024-12-31") # poprawic na koncu
+                          format = "yyyy-mm-dd",
+                          start = "2024-12-11",
+                          end = "2024-12-31",
+                          min = "2024-12-11",
+                          max = "2024-12-31") # poprawic na koncu
     )
   ),
   mainPanel(
@@ -216,17 +218,17 @@ general_data_page <- fluidPage( # pytanie gdzie dac opisy i do jakich wykresow
       ),
       column(6,
              h5("tytuł"),
-             plotOutput("radar_plot")
+             plotOutput("radar_plot") %>% withSpinner(type = 7, size = 2, color = "#F39C12")
       )
     ),
     fluidRow(
       column(6,
              h5("tytuł"),
-             plotOutput("sleep_hour_dist_ridgelines")
+             plotOutput("sleep_hour_dist_ridgelines") %>% withSpinner(type = 7, size = 2, color = "#F39C12")
       ),
       column(6,
              h5("tytuł"),
-             plotOutput("density_plot")
+             plotOutput("density_plot") %>% withSpinner(type = 7, size = 2, color = "#F39C12")
       )
     )
   )
@@ -234,7 +236,7 @@ general_data_page <- fluidPage( # pytanie gdzie dac opisy i do jakich wykresow
 
 
 individual_data_page <- fluidPage(
-    tags$style(HTML("
+  tags$style(HTML("
     .sidebar-layout .sidebar {
       border-right: 3px solid white;  /* Grubość 3px, kolor biały */
     }
@@ -253,18 +255,21 @@ individual_data_page <- fluidPage(
     sidebarPanel(
       h2("What happens during our sleep?"),
       h5("Tytuł wykresu"),
-      plotlyOutput("sleepDistractionScatter", height = "400px"),
+      plotlyOutput("sleepDistractionScatter", height = "400px") %>% 
+        withSpinner(type = 7, size = 2, color = "#F39C12"),
       h2("Is physical activity related to sleep quality?"),
       h5("Tytuł wykresu"),
-      plotOutput("activityBoxplot", height = "400px"),
+      plotOutput("activityBoxplot", height = "400px") %>% withSpinner(type = 7, size = 2, color = "#F39C12"),
     ),
     mainPanel(
       h2("How was our sleep in specific days?"),
       h5("Tytuł wykresu"),
-      plotOutput("sleeptimeCrossbar", height = "400px"),
+      plotOutput("sleeptimeCrossbar", height = "400px") %>% withSpinner(type = 7, size = 2,
+                                                                        color = "#F39C12"),
       h2("Is there a most stressful day of the week for each of us?"),
       h5("Tytuł wykresu"),
-      plotOutput("heatmap", height = "500px"),
+      plotOutput("heatmap", height = "500px") %>% withSpinner(type = 7, size = 2,
+                                                              color = "#F39C12"),
       p("Ewentualne miejsce na komentarz")
     )
   )
@@ -284,7 +289,8 @@ animation_page <- fluidPage(
                   animate = animationOptions(interval = 500, loop = FALSE))
     ),
     mainPanel(
-      plotOutput("bar_plot")
+      plotOutput("bar_plot") %>% withSpinner(type = 7, size = 2,
+                                             color = "#F39C12")
     )
   )
 )
@@ -314,7 +320,7 @@ server <- function(input, output) {
   output$radar_plot <- renderPlot({
     filtered_data <- Data %>% 
       filter(day %within% interval(input$dateSelector[1],
-      input$dateSelector[2])) %>% 
+                                   input$dateSelector[2])) %>% 
       select(Sleep.Quality,
              Asleep.after..seconds.,
              Regularity, Snore.time..seconds.,
@@ -351,14 +357,14 @@ server <- function(input, output) {
                # pcol = c("blue", "red", "green"),
                pcol = clrs,
                pfcol = clrs_alpha,
-                 # c("#0000FF50", "#FF000050", "lightgreen"),
+               # c("#0000FF50", "#FF000050", "lightgreen"),
                plwd = 2,  
                cglcol = "grey",  
                cglty = 1, 
                axislabcol = theme_get()$text$colour,
                vlcex = 0.8  
     )
-   
+    
     legend("topright",
            legend = c("Olek", "Seba", "Piotr"),
            # col = c("blue", "red", "green"),
@@ -366,35 +372,35 @@ server <- function(input, output) {
            lty = 1,
            lwd = 2)
   })
+  
+  output$sleep_hour_dist_ridgelines <- renderPlot({
+    minutes <- Data |>
+      filter(day %within% interval(input$dateSelector[1], input$dateSelector[2])) |>
+      mutate(minute_went_to_bed = unclass(interval(day, Went.to.bed)) %/% 60) |>
+      mutate(minute_woke_up = unclass(interval(day, Woke.up)) %/% 60)
     
-    output$sleep_hour_dist_ridgelines <- renderPlot({
-      minutes <- Data |>
-        filter(day %within% interval(input$dateSelector[1], input$dateSelector[2])) |>
-        mutate(minute_went_to_bed = unclass(interval(day, Went.to.bed)) %/% 60) |>
-        mutate(minute_woke_up = unclass(interval(day, Woke.up)) %/% 60)
-      
-      samples <- min(minutes$minute_went_to_bed):max(minutes$minute_woke_up)
-      
-      minutes |>
-        cross_join(tibble(val = samples)) |>
-        filter(minute_went_to_bed <= val & val <= minute_woke_up) |>
-        ggplot(aes(x = val, y = sleeper, fill = factor(sleeper))) +
-        stat_density_ridges(alpha = 0.6) +
-        scale_x_continuous(
-          labels = (\(x) format(make_datetime(min = x), "%H:%M"))
-        ) +
-        labs(
-          x = "time of day",
-          y = NULL,
-          fill = "sleeper"
-        ) +
-        theme_ridges() +
-        theme(
-          text = theme_get()$text,
-          axis.text = theme_get()$text,
-          axis.text.y = element_blank()
-        )
-    })
+    samples <- min(minutes$minute_went_to_bed):max(minutes$minute_woke_up)
+    
+    minutes |>
+      cross_join(tibble(val = samples)) |>
+      filter(minute_went_to_bed <= val & val <= minute_woke_up) |>
+      ggplot(aes(x = val, y = sleeper, fill = factor(sleeper))) +
+      stat_density_ridges(alpha = 0.6) +
+      scale_x_continuous(
+        labels = (\(x) format(make_datetime(min = x), "%H:%M"))
+      ) +
+      labs(
+        x = "time of day",
+        y = NULL,
+        fill = "sleeper"
+      ) +
+      theme_ridges() +
+      theme(
+        text = theme_get()$text,
+        axis.text = theme_get()$text,
+        axis.text.y = element_blank()
+      )
+  })
   
   
   output$density_plot <- renderPlot({
@@ -406,8 +412,8 @@ server <- function(input, output) {
     mean_df <- filtered_data %>% 
       group_by(sleeper) %>% 
       summarise(mean_SQ = mean(Sleep.Quality))
-      
-      
+    
+    
     density_plot <- ggplot(filtered_data, aes(x = Sleep.Quality, fill = sleeper)) + 
       geom_density(alpha = 0.3) +
       geom_vline(data = mean_df,
@@ -415,7 +421,7 @@ server <- function(input, output) {
                  linetype = "dashed") + 
       theme_minimal() +
       theme(
-          text = theme_get()$text
+        text = theme_get()$text
       )
     density_plot
   })
@@ -423,11 +429,11 @@ server <- function(input, output) {
   ########## individual_data_page - indywidualne informacje ##########
   
   output$sleeptimeCrossbar <- renderPlot({
-      plot_data <- Data |>
-        mutate(woke_up_inter = interval(day, Woke.up),
-               went_to_bed_inter = interval(day, Went.to.bed),
-               fell_asleep_time = Went.to.bed + dseconds(Asleep.after..seconds.)) |>
-        mutate(fell_asleep_inter = interval(day, fell_asleep_time))
+    plot_data <- Data |>
+      mutate(woke_up_inter = interval(day, Woke.up),
+             went_to_bed_inter = interval(day, Went.to.bed),
+             fell_asleep_time = Went.to.bed + dseconds(Asleep.after..seconds.)) |>
+      mutate(fell_asleep_inter = interval(day, fell_asleep_time))
     (
       plot_data |>
         filter(sleeper == input$selectSleeper) |>
@@ -435,7 +441,7 @@ server <- function(input, output) {
         # geom_crossbar(aes(ymin = went_to_bed_inter, ymax = fell_asleep_inter),
         #               fill = "#887711", colour = NA) +
         geom_crossbar(aes(ymax = woke_up_inter, ymin = fell_asleep_inter),
-                 fill = palette()[2],  colour = NA) +
+                      fill = palette()[2],  colour = NA) +
         scale_y_time(labels = (\(x) format(make_datetime(sec = x), "%H:%M")),
                      breaks =  (\(x) {
                        foo <- make_datetime(sec = floor(x[1]):(x[2]+1));
@@ -443,8 +449,8 @@ server <- function(input, output) {
                      limits = c(
                        min(plot_data$went_to_bed_inter),
                        max(plot_data$woke_up_inter)
-                       )
-                     ) +
+                     )
+        ) +
         labs(
           y = "time of day"
         ) +
@@ -492,10 +498,38 @@ server <- function(input, output) {
     dane <- Data %>% filter(sleeper == input$selectSleeper)
     plot_ly(dane, x = ~Movements.per.hour, y = ~Sleep.Quality,
             text = ~paste("Kaszlnięcia na godzinę: ", Coughing..per.hour.,
-                          "<br> Czas chrapania: ", Snore.time..seconds.),
+                          "<br> Czas chrapania: ", Snore.time..seconds., "s"),
             hoverinfo = "text",
             type = "scatter",
-            mode = "markers")
+            mode = "markers",
+            marker = list(
+              color = "#F39C12",  
+              size = 10,  
+              line = list(
+                color = "#FFFFFF", 
+                width = 1  
+              ))) %>% 
+      layout(
+              paper_bgcolor = "#2C3E50",
+              plot_bgcolor = "#2C3E50",  
+              font = list(color = "#FFFFFF"),
+              xaxis = list(
+                title = "Movements per Hour",
+                color = "#FFFFFF", 
+                gridcolor = "#34495E",
+                range(0, 150)
+              ),
+              yaxis = list(
+                title = "Sleep Quality",
+                color = "#FFFFFF", 
+                gridcolor = "#34495E",
+                range = c(0.3, 1.05)
+              ),
+              hoverlabel = list(
+                bgcolor = "#2C3E50", 
+                font = list(color = "#FFFFFF")
+              )
+            )
   })
   
   
@@ -504,7 +538,9 @@ server <- function(input, output) {
       mutate(activity = c(FALSE, FALSE, TRUE, FALSE,
                           FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE,
                           FALSE, TRUE, FALSE, TRUE, FALSE, FALSE, TRUE,
-                          FALSE, TRUE, FALSE))
+                          FALSE, TRUE, FALSE, TRUE, FALSE, TRUE,
+                          TRUE, FALSE, TRUE, FALSE, TRUE, FALSE, TRUE,
+                          TRUE, FALSE, TRUE, FALSE, TRUE, FALSE, TRUE, TRUE, FALSE))
     Olek <- Olek %>% 
       mutate(activity = c(TRUE, FALSE, FALSE, FALSE,
                           FALSE, FALSE, FALSE, TRUE, TRUE, FALSE, TRUE,
@@ -512,7 +548,7 @@ server <- function(input, output) {
                           TRUE))
     
     p <- ggplot(if (input$selectSleeper == "Piotr") Piotr else Olek,
-           aes(x = activity, y = Sleep.Quality)) +
+                aes(x = activity, y = Sleep.Quality)) +
       geom_boxplot() + 
       theme_minimal() +
       theme(
@@ -591,8 +627,11 @@ app_ui <- navbarPage(
                 <footer class='text-center text-sm-start' style='width:100%;'>
                 <hr>
                 <p class='text-center' style='font-size:12px;'>
-                  © 2021 Copyright:
-                  <a class='text-dark' href='https://www.mi2.ai/'>MI2</a>
+                  Link do 
+                  <a class='highlighted-link' href='https://github.com/SebastianBoteroLeonik/
+                  TWD-Projekt_2/'
+                  style='color: #007bff; font-weight: bold; text-decoration: underline;'
+                  > repozytorium</a>
                 </p>
                 </footer>
                 ")
@@ -600,5 +639,9 @@ app_ui <- navbarPage(
 
 # Run the application 
 shinyApp(app_ui, server)
+
+
+
+
 
 
