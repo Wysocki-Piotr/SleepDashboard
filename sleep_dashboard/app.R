@@ -23,7 +23,7 @@ library(shinycssloaders)
 # ------------------------------------------------------------------------------
 
 SebastianRaw <- read.csv2("../data/sleepdataSebastian.csv")
-PiotrRaw <-  read.csv2("../data/sleepdataPiotr.csv")
+PiotrRaw <-  read.csv2("../data/sleepdataPiotr (2).csv")
 OlekRaw <- read.csv("../data/sleepdataOlek.csv")
 
 # ------------------------------------------------------------------------------
