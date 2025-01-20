@@ -24,9 +24,8 @@ library(shinycssloaders)
 
 SebastianRaw <- read.csv2("../data/sleepdataSebastian.csv")
 PiotrRaw <-  read.csv2("../data/sleepDataPiotr (2).csv")
-OlekRaw <- read.csv("../data/sleepdataOlek.csv", sep = ";")
-OlekRaw <- OlekRaw[c(-1, -2),]
-
+OlekRaw <- read.csv2("../data/sleepdataOlek.csv")
+OlekRaw <- OlekRaw %>% slice(3:nrow(OlekRaw))
 # ------------------------------------------------------------------------------
 # Przetworzenie danych
 # ------------------------------------------------------------------------------
@@ -130,8 +129,8 @@ main_page <- fluidPage(
         color: white;
         text-align: center;
         border-radius: 5px;
-        height: 150px; /* Wysokość prostokąta */
-        margin: 5px;  /* Małe odstępy między boxami */
+        height: 150px; 
+        margin: 5px;  
       }
       .navy { background-color: #001f3f; }
       .green { background-color: #2ECC40; }
@@ -219,9 +218,9 @@ general_data_page <- fluidPage( # pytanie gdzie dac opisy i do jakich wykresow
            dateRangeInput("dateSelector", "Select a Date:", 
                           format = "yyyy-mm-dd",
                           start = "2024-12-11",
-                          end = "2024-12-31",
+                          end = "2025-1-20",
                           min = "2024-12-11",
-                          max = "2024-12-31") # poprawic na koncu
+                          max = "2025-1-20") 
     )
   ),
   mainPanel(
@@ -270,7 +269,7 @@ individual_data_page <- fluidPage(
            selectInput("selectSleeper", 
                        "Select a sleeper (person):",
                        unique(Data$sleeper),
-                       selected = "Sebastian")
+                       selected = "Piotr")
     )),
   sidebarLayout(
     sidebarPanel(
@@ -290,8 +289,7 @@ individual_data_page <- fluidPage(
       h2("Is there a most stressful day of the week for each of us?"),
       h5("Tytuł wykresu"),
       plotOutput("heatmap", height = "500px") %>% withSpinner(type = 7, size = 2,
-                                                              color = "#F39C12"),
-      p("Ewentualne miejsce na komentarz")
+                                                              color = "#F39C12")
     )
   )
 )
@@ -303,9 +301,9 @@ animation_page <- fluidPage(
   sidebarLayout(
     sidebarPanel(
       sliderInput("day", "Select a day:", 
-                  min = min(Data$day), 
+                  min = min(Data$day) + 3, 
                   max = max(Data$day), 
-                  value = min(Data$day), 
+                  value = min(Data$day) +3, 
                   step = 1, 
                   animate = animationOptions(interval = 500, loop = FALSE))
     ),
@@ -622,21 +620,34 @@ server <- function(input, output) {
       mutate(activity = c(TRUE, FALSE, FALSE, FALSE,
                           FALSE, FALSE, FALSE, TRUE, TRUE, FALSE, TRUE,
                           FALSE, FALSE, FALSE, TRUE, TRUE, FALSE, FALSE,
-                          TRUE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE,
+                          TRUE, FALSE, FALSE, FALSE, TRUE, FALSE,
                           FALSE, FALSE, FALSE, TRUE, TRUE, FALSE, FALSE,
                           FALSE, FALSE, TRUE, FALSE, TRUE, FALSE, FALSE, FALSE))
     
+    validate(
+      need(input$selectSleeper != "Sebastian", "Brak danych dla Sebastiana")
+    )
+    
     p <- ggplot(if (input$selectSleeper == "Piotr") Piotr else Olek,
                 aes(x = activity, y = Sleep.Quality)) +
-      geom_boxplot() + 
+      geom_boxplot(fill = "blue", color = "white") + 
       theme_minimal() +
       theme(
-        text = theme_get()$text
-      )
+        text = theme_get()$text,
+        panel.background = element_rect(fill = "#2C3E50"),
+        plot.background = element_rect(fill = "#2C3E50", color = NA),
+        legend.background = element_rect(fill = "#2C3E50"),
+        legend.text = element_text(color = "white"),
+        legend.title = element_text(color = "white"),
+        axis.text = element_text(color = "white", size = 12), 
+        axis.title = element_text(color = "white"),
+        panel.grid.major = element_line(color = "grey20"),
+        axis.ticks = element_line(color = "white")
+      ) +
+      ylim(0.3, 1)
     p
     
   })
-  
   
   output$heatmap <- renderPlot({
     tmp <- Data %>% 
@@ -651,21 +662,39 @@ server <- function(input, output) {
   
   
   output$bar_plot <- renderPlot({
+    unique_days <- unique(Data$day)
+    add_missing_days <- function(df, sleeper, days) {
+      missing_days <- setdiff(days, df$day)
+      new_data <- data.frame(
+        sleeper = sleeper,
+        day = as.Date(missing_days),
+        Time.asleep..seconds. = rep(NA, length.out = length(missing_days))
+      )
+      df <- df %>% select(sleeper,day,Time.asleep..seconds.)
+      df <- bind_rows(df,new_data)
+      df <- df %>%
+        mutate(
+          meanTime = mean(Time.asleep..seconds., na.rm = TRUE),
+          Time.asleep..seconds. = ifelse(is.na(Time.asleep..seconds.), meanTime, Time.asleep..seconds.)
+        ) %>% select(-meanTime)
+      return(df)
+    }
     
-    filtered_data <- Data %>% 
+    f1 <- add_missing_days(Data %>% filter(sleeper == "Sebastian"), "Sebastian", unique_days)
+    f2 <- add_missing_days(Data %>% filter(sleeper == "Olek"), "Olek", unique_days)
+    f3 <- Data %>% filter(sleeper == "Piotr") %>% select(sleeper,day, Time.asleep..seconds.)
+    filtered_data <- bind_rows(f1,f2,f3)
+    
+    filtered_data <- filtered_data %>% 
+      filter(day >= as.Date('2024-12-15')) %>% 
       filter(day <= input$day) %>%
       group_by(sleeper) %>%
       mutate(CumulativeSleepHours = as.numeric(sum(Time.asleep..seconds.)/ 3600)) %>% 
-      summarise(CumulativeSleepHours = max(CumulativeSleepHours, na.rm = TRUE)) %>% 
+      summarise(CumulativeSleepHours = max(CumulativeSleepHours)) %>% 
       arrange(desc(CumulativeSleepHours))
-    
-    #Set colors for persons
-    # custom_colors <- c("Sebastian" = "blue", "Piotr" = "red", "Olek" = "green")
-    
     
     ggplot(filtered_data, aes(x = reorder(sleeper, CumulativeSleepHours), y = CumulativeSleepHours, fill = sleeper)) +
       geom_col(alpha = 0.8) +
-      # scale_fill_manual(values = custom_colors) +
       labs(
         title = paste("Cumulative sleep time till", input$day),
         x = "Person",
@@ -721,12 +750,3 @@ app_ui <- navbarPage(
 
 # Run the application 
 shinyApp(app_ui, server)
-
-
-
-
-
-
-
-
-
