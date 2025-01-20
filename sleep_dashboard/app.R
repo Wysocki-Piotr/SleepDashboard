@@ -23,7 +23,7 @@ library(shinycssloaders)
 # ------------------------------------------------------------------------------
 
 SebastianRaw <- read.csv2("../data/sleepdataSebastian.csv")
-PiotrRaw <-  read.csv2("../data/sleepdataPiotr (2).csv")
+PiotrRaw <-  read.csv2("../data/sleepDataPiotr (2).csv")
 OlekRaw <- read.csv("../data/sleepdataOlek.csv")
 
 # ------------------------------------------------------------------------------
@@ -69,16 +69,15 @@ Data <- bind_rows(Sebastian, Piotr, Olek)
 # ------------------------------------------------------------------------------
 
 generate_pom <- function(df){
-  df %>%
-    mutate(Went.to.bed = update(ymd_hms(Went.to.bed, tz = "UTC"), day = General.day.asleep),
-           Went.to.bed = update(Went.to.bed, month = General.month.asleep),
-           Went.to.bed = if_else(month(Went.to.bed) == 12,
-                                 update(Went.to.bed, year = 2024), 
-                                 update(Went.to.bed, year = 2025))) %>%
-    mutate(DayOfWeek = wday(ymd_hms(Went.to.bed, tz = "UTC"),
-                            label = TRUE, week_start = 1),
-           WeekNumber = week(ymd_hms(Went.to.bed, tz = "UTC"))) %>%
-    mutate(WeekNumber = if_else(WeekNumber == 1, 54, WeekNumber)) %>%
+  df %>% mutate(WeekNumber = week(day - 1)) %>%
+    mutate(WeekNumber = if_else(WeekNumber <= 5, 53 + WeekNumber, WeekNumber),
+           DayOfWeek = wday(day - 1, week_start = 1, label = TRUE)) %>%
+    mutate(
+      WeekNumber = if_else(
+        (DayOfWeek == "pon\\." | DayOfWeek == "wt\\.") & WeekNumber >= 54, 
+        WeekNumber + 1, 
+        WeekNumber
+      )) %>% 
     arrange(WeekNumber)
 }
 
@@ -90,7 +89,8 @@ plot <- function(df){
     scale_fill_gradientn(colors = hcl.colors(50, "RdYlGn"), limits = c(0.25, 1)) +
     theme_minimal() +
     labs(x = "Dzień tygodnia", y = "Numer tygodnia w roku") +
-    scale_y_continuous(labels = function(x) ifelse(x >= 54, x - 53, x)) +
+    scale_y_continuous(labels = function(x){
+      ifelse(x >= 54, x - 53, x)}) +
     theme(
       panel.grid = element_blank(),
       text = theme_get()$text
@@ -718,12 +718,6 @@ app_ui <- navbarPage(
 
 # Run the application 
 shinyApp(app_ui, server)
-
-
-
-
-
-
 
 
 
