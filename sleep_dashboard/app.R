@@ -24,7 +24,8 @@ library(shinycssloaders)
 
 SebastianRaw <- read.csv2("../data/sleepdataSebastian.csv")
 PiotrRaw <-  read.csv2("../data/sleepDataPiotr (2).csv")
-OlekRaw <- read.csv("../data/sleepdataOlek.csv")
+OlekRaw <- read.csv("../data/sleepdataOlek.csv", sep = ";")
+OlekRaw <- OlekRaw[c(-1, -2),]
 
 # ------------------------------------------------------------------------------
 # Przetworzenie danych
@@ -621,7 +622,9 @@ server <- function(input, output) {
       mutate(activity = c(TRUE, FALSE, FALSE, FALSE,
                           FALSE, FALSE, FALSE, TRUE, TRUE, FALSE, TRUE,
                           FALSE, FALSE, FALSE, TRUE, TRUE, FALSE, FALSE,
-                          TRUE))
+                          TRUE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE,
+                          FALSE, FALSE, FALSE, TRUE, TRUE, FALSE, FALSE,
+                          FALSE, FALSE, TRUE, FALSE, TRUE, FALSE, FALSE, FALSE))
     
     p <- ggplot(if (input$selectSleeper == "Piotr") Piotr else Olek,
                 aes(x = activity, y = Sleep.Quality)) +
