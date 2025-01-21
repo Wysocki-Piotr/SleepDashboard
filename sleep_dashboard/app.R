@@ -208,7 +208,9 @@ main_page <- fluidPage(
     column(4,
            uiOutput("img3"),
            h3("Sebastian Botero Leonik"),
-           p("To jest opis trzeciego obrazu.")
+           p("I am a Data Science student and I have no free time for
+             I spend it all working on projects for university and doom-scrolling 
+             instagram reels.")
     )
   )
 )
