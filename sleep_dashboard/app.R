@@ -194,7 +194,9 @@ main_page <- fluidPage(
     column(4,
            uiOutput("img1"),
            h3("Olek Luckner"),
-           p("To jest opis pierwszego obrazu.")
+           p("My main leisure activity is studying for college.
+             My hobbies are playing soccer and optimizing my
+             commute by public transportation.")
     ),
     column(4,
            uiOutput("img2"),
@@ -361,6 +363,7 @@ server <- function(input, output) {
     filtered_data <- Data %>% 
       filter(day %within% interval(input$dateSelector[1],
                                    input$dateSelector[2])) %>% 
+      mutate(Regularity = replace_na(Regularity, 0)) %>% 
       select(Sleep.Quality,
              Asleep.after..seconds.,
              Regularity, Snore.time..seconds.,
@@ -485,8 +488,18 @@ server <- function(input, output) {
       scale_color_manual(values = c("Sebastian" = clrs[3], "Piotr" = clrs[2], "Olek" = clrs[1])) +
       theme_minimal() +
       theme(
-        text = theme_get()$text
-      ) + labs(x = "Sleep quality")
+        text = theme_get()$text,
+        axis.text.x = element_text(
+            colour =  theme_get()$text$colour,
+            size = 12),
+        axis.text.y = element_text(
+          colour =  theme_get()$text$colour,
+          size = 12)
+        
+        
+      ) + labs(x = "Sleep quality", y = "Density") +
+      scale_y_continuous(expand = expansion(mult = c(0.05, 0.1)))
+    
     density_plot
   })
   
