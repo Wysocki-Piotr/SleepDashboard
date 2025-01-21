@@ -71,14 +71,15 @@ Data <- bind_rows(Sebastian, Piotr, Olek)
 generate_pom <- function(df){
   df %>% mutate(WeekNumber = week(day - 1)) %>%
     mutate(WeekNumber = if_else(WeekNumber <= 5, 53 + WeekNumber, WeekNumber),
-           DayOfWeek = wday(day - 1, week_start = 1, label = TRUE)) %>%
+           DayOfWeek = wday(day - 1, week_start = 1, label = TRUE,
+                            locale = "en_US")) %>%
     mutate(
       WeekNumber = if_else(
-        (DayOfWeek == "pon\\." | DayOfWeek == "wt\\.") & WeekNumber >= 54, 
+        (DayOfWeek == "Mon" | DayOfWeek == "Tue") & WeekNumber >= 54, 
         WeekNumber + 1, 
         WeekNumber
       )) %>% 
-    arrange(WeekNumber)
+    arrange(desc(WeekNumber))
 }
 
 plot <- function(df){
@@ -88,12 +89,16 @@ plot <- function(df){
     geom_tile(color = "white", lwd = 1.5) +
     scale_fill_gradientn(colors = hcl.colors(50, "RdYlGn"), limits = c(0.25, 1)) +
     theme_minimal() +
-    labs(x = "Dzień tygodnia", y = "Numer tygodnia w roku") +
-    scale_y_continuous(labels = function(x){
-      ifelse(x >= 54, x - 53, x)}) +
+    labs(x = element_blank(), y = element_blank()) +
+    scale_y_continuous(breaks = unique(df$WeekNumber),
+                       labels = function(x) {
+          ifelse(x >= 54, paste0("2025 W", x - 53), paste0("2024 W", x))
+                       }) +
     theme(
       panel.grid = element_blank(),
-      text = theme_get()$text
+      text = theme_get()$text,
+      axis.text.x = element_text(color = "white", size = 10),
+      axis.text.y = element_text(color = "white", size = 10)
     ) 
 }
 
@@ -117,6 +122,12 @@ theme_set(
 )
 
 main_page <- fluidPage(
+  tags$style(HTML("
+           h1 {
+               font-weight: bold;
+           }
+       ")),
+  h1("Welcome to our MiNI REST app!"),
   tags$head(
     tags$style(HTML("
       .custom-box {
@@ -172,25 +183,29 @@ main_page <- fluidPage(
   ),
   fluidRow(
     column(12,
-           h1("Main Description"),
-           p("This is the main description section where you can provide additional details about the content displayed above.")
+           p("In this project, we embarked on an exciting journey to analyze our sleep patterns during
+           the academic year and winter break.
+             For over 40 days we have been using the Sleep Cycle app, which tracked our sleep data.
+             By making use of shiny, HTML and CSS we took a look into our sleep patterns and factors that affect our night rest.")
     )
   ),
   
   fluidRow(
     column(4,
            uiOutput("img1"),
-           h3("Opis 1"),
+           h3("Olek Luckner"),
            p("To jest opis pierwszego obrazu.")
     ),
     column(4,
            uiOutput("img2"),
-           h3("Opis 2"),
-           p("To jest opis drugiego obrazu.")
+           h3("Piotr Wysocki"),
+           p("Student of Data Science at WUT. In free
+             time tennis is usually my go-to sport but
+             recently I also got into running.")
     ),
     column(4,
            uiOutput("img3"),
-           h3("Opis 3"),
+           h3("Sebastian Botero Leonik"),
            p("To jest opis trzeciego obrazu.")
     )
   )
@@ -227,11 +242,14 @@ general_data_page <- fluidPage( # pytanie gdzie dac opisy i do jakich wykresow
     width = 12,
     fluidRow(
       column(6,
-             h3("Description"),
-             p("opis sekcji np. w swieta lepiej, godziny wstawania etc")
+             h4("Sleep insights", style = "color: #B0B0B0; padding: 10px; border-radius: 5px;"),
+             h3("In this page you can compare our features sleep and bed time based on different range factors and also days of the week.
+               Comprehensive radar plot present different aspects of our sleep. On our density plot we can guess when our
+               alarm clock usually rings, by noticable descends on chart. Lastly, we can delve into density our sleep quality.
+               For instance, if we choose Christmas time it is easy to spot that it got higher.")
       ),
       column(6,
-             h5("tytuł"),
+             h5("Sleep Overview"),
              plotOutput("radar_plot", height = "600px") |> 
                withSpinner(type = 7, size = 2, color = "#F39C12")
       )
@@ -247,7 +265,7 @@ general_data_page <- fluidPage( # pytanie gdzie dac opisy i do jakich wykresow
                choices = weekday_opts) 
       ),
       column(6,
-             h5("tytuł"),
+             h5("Sleep quality distribution across individuals"),
              plotOutput("density_plot") %>% withSpinner(type = 7, size = 2, color = "#F39C12")
       )
     )
@@ -262,7 +280,7 @@ individual_data_page <- fluidPage(
     }
   ")),
   titlePanel("Let's dive deeper into each of our sleep!"),
-  fluidRow("Opis całej strony"),
+  fluidRow(""),
   
   fluidRow(
     column(12,
@@ -274,11 +292,11 @@ individual_data_page <- fluidPage(
   sidebarLayout(
     sidebarPanel(
       h2("What happens during our sleep?"),
-      h5("Tytuł wykresu"),
+      h5("Hourly Movements vs. Sleep Quality"),
       plotlyOutput("sleepDistractionScatter", height = "400px") %>% 
         withSpinner(type = 7, size = 2, color = "#F39C12"),
       h2("Is physical activity related to sleep quality?"),
-      h5("Tytuł wykresu"),
+      h5("Distribution of sleep quality in active and inactive days"),
       plotOutput("activityBoxplot", height = "400px") %>% withSpinner(type = 7, size = 2, color = "#F39C12"),
     ),
     mainPanel(
@@ -287,7 +305,7 @@ individual_data_page <- fluidPage(
       plotOutput("sleeptimeCrossbar", height = "400px") %>% 
         withSpinner(type = 7, size = 2, color = "#F39C12"),
       h2("Is there a most stressful day of the week for each of us?"),
-      h5("Tytuł wykresu"),
+      h5("Calendar of sleep quality"),
       plotOutput("heatmap", height = "500px") %>% withSpinner(type = 7, size = 2,
                                                               color = "#F39C12")
     )
@@ -296,7 +314,6 @@ individual_data_page <- fluidPage(
 
 
 animation_page <- fluidPage(
-  # mozna tez wrzucic jakis krotki tekst do tej wizualizacji
   titlePanel("Cumulative sleep time"),
   sidebarLayout(
     sidebarPanel(
@@ -305,8 +322,13 @@ animation_page <- fluidPage(
                   max = max(Data$day), 
                   value = min(Data$day) +3, 
                   step = 1, 
-                  animate = animationOptions(interval = 500, loop = FALSE))
-    ),
+                  animate = animationOptions(interval = 500, loop = FALSE),
+                  wellPanel(
+      p("This animated cumulative sleep graph visualizes your sleep patterns over time,
+      showing how your nightly rest builds up. Each frame
+      reflects your progress, providing a dynamic way to explore your
+        sleep trends and understand your journey throught MiNi semester."))
+    )),
     mainPanel(
       plotOutput("bar_plot") 
     )
@@ -430,7 +452,7 @@ server <- function(input, output) {
         )
       ) +
       labs(
-        x = "time of day",
+        x = "Time of a day",
         y = NULL,
         fill = "sleeper"
       ) +
@@ -441,34 +463,6 @@ server <- function(input, output) {
         axis.text.y = element_blank()
       )
   })
-  # <<<<<<< HEAD
-  #     samples <- min(minutes$minute_went_to_bed):max(minutes$minute_woke_up)
-  #     
-  #     minutes |>
-  #       cross_join(tibble(val = samples)) |>
-  #       filter(minute_went_to_bed <= val & val <= minute_woke_up) |>
-  #       ggplot(aes(x = val, y = sleeper, fill = factor(sleeper))) +
-  #       stat_density_ridges(alpha = 0.6) +
-  #       scale_x_continuous(
-  #         labels = (\(x) format(make_datetime(min = x), "%H:%M"))
-  #       ) +
-  #       labs(
-  #         x = "time of day",
-  #         y = NULL,
-  #         fill = "sleeper"
-  #       ) +
-  #       theme_ridges() +
-  #       theme(
-  #         text = theme_get()$text,
-  #         axis.text = theme_get()$text,
-  #         axis.text.y = element_blank()
-  #       )
-  #   })
-  # =======
-  #     output$sleep_hour_dist_ridgelines <- renderPlot({
-  #     })
-  # >>>>>>> local
-  
   
   output$density_plot <- renderPlot({
     clrs <- palette()[c(1,2,4)]
@@ -492,7 +486,7 @@ server <- function(input, output) {
       theme_minimal() +
       theme(
         text = theme_get()$text
-      )
+      ) + labs(x = "Sleep quality")
     density_plot
   })
   
@@ -589,13 +583,13 @@ server <- function(input, output) {
         plot_bgcolor = "#2C3E50",  
         font = list(color = "#FFFFFF"),
         xaxis = list(
-          title = "Movements per Hour",
+          title = "Movements per hour",
           color = "#FFFFFF", 
           gridcolor = "#34495E",
-          range(0, 150)
+          range = c(-5, 150)
         ),
         yaxis = list(
-          title = "Sleep Quality",
+          title = "Sleep quality",
           color = "#FFFFFF", 
           gridcolor = "#34495E",
           range = c(0.3, 1.05)
@@ -603,7 +597,8 @@ server <- function(input, output) {
         hoverlabel = list(
           bgcolor = "#2C3E50", 
           font = list(color = "#FFFFFF")
-        )
+        ),
+        hoverdistance = 5
       )
   })
   
@@ -644,7 +639,10 @@ server <- function(input, output) {
         panel.grid.major = element_line(color = "grey20"),
         axis.ticks = element_line(color = "white")
       ) +
-      ylim(0.3, 1)
+      ylim(0.3, 1) +
+      labs(x = "Physical activity",
+           y = "Sleep quality") +
+      scale_x_discrete(labels = c("FALSE" = "No", "TRUE" = "Yes"))
     p
     
   })
@@ -697,12 +695,11 @@ server <- function(input, output) {
       geom_col(alpha = 0.8) +
       labs(
         title = paste("Cumulative sleep time till", input$day),
-        x = "Person",
+        x = element_blank(),
         y = "Sleep time (hours)"
       ) +
       theme_minimal() +
       theme(
-        # legend.position = "none",
         text = theme_get()$text,
         axis.text.x = element_text(
           colour =  theme_get()$text$colour,
@@ -724,9 +721,9 @@ app_ui <- navbarPage(
     icon("bed", style = "color: darkblue; font-size: 24px;"),
   ),
   tabPanel("Main page", main_page),
-  tabPanel("Ogólne dane", general_data_page),
-  tabPanel("Indywidualne dane", individual_data_page),
-  tabPanel("Animacja", animation_page),
+  tabPanel("General data", general_data_page),
+  tabPanel("Individual data", individual_data_page),
+  tabPanel("Animation", animation_page),
   theme = bslib::bs_theme(bootswatch = "darkly", 
                           primary = "#F39C12",
                           secondary = "#3498DB",
@@ -738,11 +735,18 @@ app_ui <- navbarPage(
                 <footer class='text-center text-sm-start' style='width:100%;'>
                 <hr>
                 <p class='text-center' style='font-size:12px;'>
-                  Link do 
+                  Link to our 
                   <a class='highlighted-link' href='https://github.com/SebastianBoteroLeonik/
                   TWD-Projekt_2/'
                   style='color: #007bff; font-weight: bold; text-decoration: underline;'
-                  > repozytorium</a>
+                  > repo</a>
+                </p>
+                <p class='text-center' style='font-size:12px;'>
+                  Used libraries: 
+                  <span style='white-space: nowrap;'>
+                    • shiny • dplyr • lubridate • ggplot2 • tidyr • plotly • ggridges • 
+                    bslib • fmsb • patchwork • ggalt • jpeg • shinydashboard • thematic • shinycssloaders
+                  </span>
                 </p>
                 </footer>
                 ")
@@ -750,3 +754,4 @@ app_ui <- navbarPage(
 
 # Run the application 
 shinyApp(app_ui, server)
+
