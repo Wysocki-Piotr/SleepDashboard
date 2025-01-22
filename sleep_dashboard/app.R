@@ -598,7 +598,7 @@ server <- function(input, output) {
           size = 14
         )
       )
-  })
+  }) |> bindCache(input$selectSleeper)
   
   
   output$sleepDistractionScatter <- renderPlotly({
@@ -641,7 +641,7 @@ server <- function(input, output) {
         ),
         hoverdistance = 5
       )
-  })
+  }) |> bindCache(input$selectSleeper)
   
   
   output$activityBoxplot <- renderPlot({
@@ -689,7 +689,7 @@ server <- function(input, output) {
       scale_x_discrete(labels = c("FALSE" = "No", "TRUE" = "Yes"))
     p
     
-  })
+  }) |> bindCache(input$selectSleeper)
   
   output$heatmap <- renderPlot({
     tmp <- Data %>% 
@@ -697,7 +697,7 @@ server <- function(input, output) {
     pom1 <- generate_pom(tmp)
     p <- plot(pom1)
     p
-  })
+  }) |> bindCache(input$selectSleeper)
   
   
   ########## animation_page - aniamacja ##########
@@ -751,7 +751,7 @@ server <- function(input, output) {
       ) +
       coord_flip()
     
-  })
+  }) |> bindCache(input$day)
 }
 
 # ------------------------------------------------------------------------------
