@@ -92,7 +92,7 @@ plot <- function(df){
     labs(x = element_blank(), y = element_blank()) +
     scale_y_continuous(breaks = unique(df$WeekNumber),
                        labels = function(x) {
-          ifelse(x >= 54, paste0("2025 W", x - 53), paste0("2024 W", x))
+                         ifelse(x >= 54, paste0("2025 W", x - 53), paste0("2024 W", x))
                        }) +
     theme(
       panel.grid = element_blank(),
@@ -149,11 +149,11 @@ main_page <- fluidPage(
       .orange { background-color: #f36f12; }
     "))
   ),
-  
   fluidRow(
     column(2),
-    column(4,
+    column(2,
            div(class = "custom-box orange", 
+               style = "padding: 20px; font-size: 1.2em; width: 100%; text-align: center;",
                icon("chart-simple"),
                div(
                  style = "font-size: 1.5em; margin-bottom: 5px;",
@@ -161,8 +161,9 @@ main_page <- fluidPage(
                )
            )
     ),
-    column(4,
+    column(2,
            div(class = "custom-box navy", 
+               style = "padding: 20px; font-size: 1.2em; width: 100%; text-align: center;",
                icon("moon"),
                div(
                  style = "font-size: 2em; margin-bottom: 5px;",
@@ -170,12 +171,10 @@ main_page <- fluidPage(
                ),
                div("Average Sleep Time in hours")
            )
-    )
-  ),
-  fluidRow(
-    column(2),
-    column(4,
+    ),
+    column(2,
            div(class = "custom-box red", 
+               style = "padding: 20px; font-size: 1.2em; width: 100%; text-align: center;",
                icon("clock"),
                div(
                  style = "font-size: 2em; margin-bottom: 5px;",
@@ -184,8 +183,9 @@ main_page <- fluidPage(
                div("Shortest sleep in hours")
            )
     ),
-    column(4,
+    column(2,
            div(class = "custom-box green", 
+               style = "padding: 20px; font-size: 1.2em; width: 100%; text-align: center;",
                icon("mattress-pillow"),
                div(
                  style = "font-size: 2em; margin-bottom: 5px;",
@@ -193,7 +193,11 @@ main_page <- fluidPage(
                ),
                div("Longest sleep in hours")
            )
-    )
+    ),
+    column(2)
+  ),
+  fluidRow(
+    
   ),
   fluidRow(
     column(12,
@@ -342,11 +346,11 @@ animation_page <- fluidPage(
                   step = 1, 
                   animate = animationOptions(interval = 500, loop = FALSE),
                   wellPanel(
-      p("This animated cumulative sleep graph visualizes your sleep patterns over time,
+                    p("This animated cumulative sleep graph visualizes your sleep patterns over time,
       showing how your nightly rest builds up. Each frame
       reflects your progress, providing a dynamic way to explore your
         sleep trends and understand your journey throught MiNi semester."))
-    )),
+      )),
     mainPanel(
       plotOutput("bar_plot") 
     )
@@ -508,8 +512,8 @@ server <- function(input, output) {
       theme(
         text = theme_get()$text,
         axis.text.x = element_text(
-            colour =  theme_get()$text$colour,
-            size = 12),
+          colour =  theme_get()$text$colour,
+          size = 12),
         axis.text.y = element_text(
           colour =  theme_get()$text$colour,
           size = 12)
@@ -794,4 +798,5 @@ app_ui <- navbarPage(
 
 # Run the application 
 shinyApp(app_ui, server)
+
 
