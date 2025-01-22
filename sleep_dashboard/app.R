@@ -146,10 +146,21 @@ main_page <- fluidPage(
       .navy { background-color: #001f3f; }
       .green { background-color: #2ECC40; }
       .red { background-color: #FF4136; }
+      .orange { background-color: #f36f12; }
     "))
   ),
   
   fluidRow(
+    column(2),
+    column(4,
+           div(class = "custom-box orange", 
+               icon("chart-simple"),
+               div(
+                 style = "font-size: 1.5em; margin-bottom: 5px;",
+                 "General summary"
+               )
+           )
+    ),
     column(4,
            div(class = "custom-box navy", 
                icon("moon"),
@@ -159,7 +170,10 @@ main_page <- fluidPage(
                ),
                div("Average Sleep Time in hours")
            )
-    ),
+    )
+  ),
+  fluidRow(
+    column(2),
     column(4,
            div(class = "custom-box red", 
                icon("clock"),
@@ -416,7 +430,8 @@ server <- function(input, output) {
                cglcol = "grey",  
                cglty = 1, 
                axislabcol = theme_get()$text$colour,
-               vlcex = 0.8
+               vlcex = 1,
+               calcex = 1.2
     )
     
     legend("topright",
