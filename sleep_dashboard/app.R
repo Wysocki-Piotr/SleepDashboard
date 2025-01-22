@@ -507,7 +507,10 @@ server <- function(input, output) {
   
   ########## individual_data_page - indywidualne informacje ##########
   
+  
   output$sleeptimeCrossbar <- renderPlot({
+    personal_colours <- palette()[c(1,2,4)]
+    names(personal_colours) <- c("Olek", "Piotr", "Sebastian")
     plot_data <- Data |>
       mutate(woke_up_inter = interval(day, Woke.up),
              went_to_bed_inter = interval(day, Went.to.bed),
@@ -520,7 +523,7 @@ server <- function(input, output) {
         # geom_crossbar(aes(ymin = went_to_bed_inter, ymax = fell_asleep_inter),
         #               fill = "#887711", colour = NA) +
         geom_crossbar(aes(ymax = woke_up_inter, ymin = fell_asleep_inter),
-                      fill = palette()[2],  colour = NA) +
+                      fill = personal_colours[input$selectSleeper], colour = NA) +
         scale_y_time(labels = (\(x) format(make_datetime(sec = x), "%H:%M")),
                      breaks =  (\(x) {
                        foo <- make_datetime(sec = floor(x[1]):(x[2]+1));
@@ -579,6 +582,9 @@ server <- function(input, output) {
   
   
   output$sleepDistractionScatter <- renderPlotly({
+    personal_colours <- palette()[c(1,2,4)]
+    names(personal_colours) <- c("Olek", "Piotr", "Sebastian")
+    
     dane <- Data %>% filter(sleeper == input$selectSleeper)
     plot_ly(dane, x = ~Movements.per.hour, y = ~Sleep.Quality,
             text = ~paste("Kaszlnięcia na godzinę: ", Coughing..per.hour.,
@@ -587,7 +593,7 @@ server <- function(input, output) {
             type = "scatter",
             mode = "markers",
             marker = list(
-              color = "#F39C12",  
+              color = personal_colours[input$selectSleeper],  
               size = 10,  
               line = list(
                 color = "#FFFFFF", 
@@ -638,9 +644,12 @@ server <- function(input, output) {
       need(input$selectSleeper != "Sebastian", "Brak danych dla Sebastiana")
     )
     
+    personal_colours <- palette()[c(1,2,4)]
+    names(personal_colours) <- c("Olek", "Piotr", "Sebastian")
+    
     p <- ggplot(if (input$selectSleeper == "Piotr") Piotr else Olek,
                 aes(x = activity, y = Sleep.Quality)) +
-      geom_boxplot(fill = "blue", color = "white") + 
+      geom_boxplot(fill = personal_colours[input$selectSleeper], color = "white") + 
       theme_minimal() +
       theme(
         text = theme_get()$text,
