@@ -751,7 +751,7 @@ server <- function(input, output) {
       ) +
       coord_flip()
     
-  })
+  }) %>% bindCache(input$day, unique(Data$sleeper))
 }
 
 # ------------------------------------------------------------------------------
