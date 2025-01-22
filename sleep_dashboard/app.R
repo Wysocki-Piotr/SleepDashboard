@@ -425,6 +425,7 @@ server <- function(input, output) {
                # pcol = c("blue", "red", "green"),
                pcol = clrs,
                pfcol = clrs_alpha,
+               plty = 1,
                # c("#0000FF50", "#FF000050", "lightgreen"),
                plwd = 2,  
                cglcol = "grey",  
