@@ -6,6 +6,6 @@ An app that summarizes and present data about our sleep tracked by SleepCycle ap
 - [Aleksander Luckner](https://github.com/lucknera)
 - [Piotr Wysocki](https://github.com/Wysocki-Piotr)
 
-#### Link do aplikacji
+#### Link to app
 
 [MiNI REST](https://sebastianbotero.shinyapps.io/sleep_dashboard)
